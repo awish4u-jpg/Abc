@@ -17,6 +17,7 @@
     "concurrently": "^9.0.0"
   },
   "dependencies": {
+    "multer": "^2.0.2",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   }

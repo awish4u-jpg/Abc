@@ -3,7 +3,7 @@ const { getDb } = require('../../database/init');
 
 const router = express.Router();
 
-// GET /api/coes?project_id=N
+// GET /api/coes
 router.get('/', async (req, res, next) => {
   try {
     const { project_id } = req.query;
@@ -21,14 +21,16 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/coes/:id
+// GET /api/coes/:id — includes all technologies belonging to this COE
 router.get('/:id', async (req, res, next) => {
   try {
-    const coe = await getDb().get(
-      'SELECT * FROM coes WHERE id = ?',
-      req.params.id
-    );
+    const coe = await getDb().get('SELECT * FROM coes WHERE id = ?', req.params.id);
     if (!coe) return res.status(404).json({ error: 'COE not found' });
+
+    coe.technologies = await getDb().all(
+      'SELECT * FROM technologies WHERE coe_id = ? ORDER BY name',
+      coe.id
+    );
     res.json(coe);
   } catch (err) {
     next(err);
@@ -45,10 +47,7 @@ router.post('/', async (req, res, next) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'name is required' });
     }
-    const project = await getDb().get(
-      'SELECT id FROM projects WHERE id = ?',
-      project_id
-    );
+    const project = await getDb().get('SELECT id FROM projects WHERE id = ?', project_id);
     if (!project) {
       return res.status(400).json({ error: 'project_id references a non-existent project' });
     }
@@ -56,10 +55,7 @@ router.post('/', async (req, res, next) => {
       'INSERT INTO coes (project_id, name, description) VALUES (?, ?, ?)',
       [project_id, name.trim(), description || null]
     );
-    const coe = await getDb().get(
-      'SELECT * FROM coes WHERE id = ?',
-      result.lastID
-    );
+    const coe = await getDb().get('SELECT * FROM coes WHERE id = ?', result.lastID);
     res.status(201).json(coe);
   } catch (err) {
     next(err);
@@ -80,10 +76,7 @@ router.put('/:id', async (req, res, next) => {
     if (result.changes === 0) {
       return res.status(404).json({ error: 'COE not found' });
     }
-    const coe = await getDb().get(
-      'SELECT * FROM coes WHERE id = ?',
-      req.params.id
-    );
+    const coe = await getDb().get('SELECT * FROM coes WHERE id = ?', req.params.id);
     res.json(coe);
   } catch (err) {
     next(err);
@@ -93,10 +86,7 @@ router.put('/:id', async (req, res, next) => {
 // DELETE /api/coes/:id
 router.delete('/:id', async (req, res, next) => {
   try {
-    const result = await getDb().run(
-      'DELETE FROM coes WHERE id = ?',
-      req.params.id
-    );
+    const result = await getDb().run('DELETE FROM coes WHERE id = ?', req.params.id);
     if (result.changes === 0) {
       return res.status(404).json({ error: 'COE not found' });
     }
