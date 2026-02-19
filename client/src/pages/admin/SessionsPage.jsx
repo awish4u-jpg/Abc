@@ -5,6 +5,7 @@ import ReportPreviewModal from '../../components/ReportPreviewModal';
 export default function SessionsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [sessionsByProject, setSessionsByProject] = useState({});
   const [expandedProject, setExpandedProject] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -15,6 +16,7 @@ export default function SessionsPage() {
   const [compareData, setCompareData] = useState(null);
 
   useEffect(() => {
+    setError(null);
     api.getProjects()
       .then(async (projs) => {
         setProjects(projs);
@@ -25,7 +27,7 @@ export default function SessionsPage() {
         }
         setSessionsByProject(map);
       })
-      .catch(() => {})
+      .catch((err) => setError(err.message || 'Failed to load sessions'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -55,14 +57,41 @@ export default function SessionsPage() {
       </div>
 
       <div className="p-8">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-[#C5A572] border-t-transparent animate-spin" />
+        {error ? (
+          <div className="text-center py-12 slide-in">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-sm text-gray-500 mb-3">{error}</p>
+            <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="space-y-4">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+                <div className="px-5 py-4 space-y-2">
+                  <div className="h-5 w-40 rounded shimmer-row" />
+                  <div className="h-3 w-24 rounded shimmer-row" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : projectsWithSessions.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">No sessions recorded yet</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-[#C5A572]/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#C5A572]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">No sessions recorded yet</p>
+            <p className="text-sm text-gray-400">Start a presentation to begin recording sessions.</p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 slide-in">
             {projectsWithSessions.map((p) => {
               const sessions = sessionsByProject[p.id] || [];
               const isExpanded = expandedProject === p.id;
@@ -184,8 +213,8 @@ export default function SessionsPage() {
 
       {/* Decision log panel */}
       {selectedSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSelectedSession(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={() => setSelectedSession(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-[#E8E0D4] flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -227,8 +256,8 @@ export default function SessionsPage() {
 
       {/* Compare view */}
       {compareData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setCompareData(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={() => setCompareData(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-4 border-b border-[#E8E0D4] flex items-center justify-between">
               <h3 className="font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
                 Session Comparison

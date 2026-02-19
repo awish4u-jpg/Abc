@@ -14,6 +14,7 @@ function isImage(mimetype) {
 export default function MediaPage() {
   const [media, setMedia] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -22,11 +23,12 @@ export default function MediaPage() {
 
   const load = () => {
     setLoading(true);
+    setError(null);
     const params = {};
     if (filter) params.mimetype = filter;
     api.getMedia(params)
       .then(setMedia)
-      .catch(() => setMedia([]))
+      .catch((err) => { setMedia([]); setError(err.message || 'Failed to load media'); })
       .finally(() => setLoading(false));
   };
 
@@ -68,7 +70,7 @@ export default function MediaPage() {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm bg-white focus:outline-none focus:border-[#C5A572]"
+            className="px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm bg-white focus:outline-none focus:border-[#C5A572] transition-colors"
           >
             <option value="">All types</option>
             <option value="image/">Images</option>
@@ -114,17 +116,49 @@ export default function MediaPage() {
 
         {/* Media grid */}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-[#C5A572] border-t-transparent animate-spin" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {[1,2,3,4,5,6,7,8].map(i => (
+              <div key={i} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+                <div className="aspect-square shimmer-row" />
+                <div className="p-3 space-y-2">
+                  <div className="h-3 w-24 rounded shimmer-row" />
+                  <div className="h-2 w-12 rounded shimmer-row" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">Failed to load media</p>
+            <p className="text-sm text-gray-400 mb-4">{error}</p>
+            <button onClick={load} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Retry
+            </button>
           </div>
         ) : media.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">No media files uploaded yet</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-[#C5A572]/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#C5A572]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">No media files yet</p>
+            <p className="text-sm text-gray-400 mb-4">Upload images, PDFs, or documents to get started.</p>
+            <button onClick={() => fileRef.current?.click()} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Upload Files
+            </button>
+          </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 slide-in">
             {media.map((m) => (
               <div
                 key={m.id}
-                className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden group hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden group hover:shadow-md transition-shadow card-hover"
               >
                 {/* Preview */}
                 <div
@@ -172,8 +206,8 @@ export default function MediaPage() {
 
       {/* Preview Modal */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setPreview(null)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-3xl max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm fade-in" onClick={() => setPreview(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl max-h-[85vh] overflow-hidden scale-in" onClick={(e) => e.stopPropagation()}>
             {isImage(preview.mimetype) ? (
               <img src={preview.url} alt={preview.original_name} className="max-h-[70vh] object-contain" />
             ) : (
@@ -190,10 +224,10 @@ export default function MediaPage() {
                 <p className="text-xs text-gray-400">{formatSize(preview.size)} &middot; {preview.mimetype}</p>
               </div>
               <div className="flex gap-3">
-                <a href={preview.url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-[#E8E0D4] text-sm text-gray-700 hover:border-[#C5A572]">
+                <a href={preview.url} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-[#E8E0D4] text-sm text-gray-700 hover:border-[#C5A572] transition-colors">
                   Open
                 </a>
-                <button onClick={() => { handleDelete(preview.id); setPreview(null); }} className="px-4 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50">
+                <button onClick={() => { handleDelete(preview.id); setPreview(null); }} className="px-4 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors">
                   Delete
                 </button>
               </div>

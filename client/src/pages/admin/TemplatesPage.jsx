@@ -7,18 +7,20 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showClone, setShowClone] = useState(null);
   const [cloneForm, setCloneForm] = useState({ name: '', client: '', type: '', asTemplate: false });
 
   const load = () => {
     setLoading(true);
+    setError(null);
     Promise.all([
       api.getProjects({ is_template: '1' }),
       api.getProjects({ is_template: '0' }),
     ])
       .then(([tmpl, proj]) => { setTemplates(tmpl); setProjects(proj); })
-      .catch(() => {})
+      .catch((err) => setError(err.message || 'Failed to load templates'))
       .finally(() => setLoading(false));
   };
 
@@ -78,16 +80,49 @@ export default function TemplatesPage() {
           })}
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-[#C5A572] border-t-transparent animate-spin" />
+        {error ? (
+          <div className="text-center py-12 slide-in">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-sm text-gray-500 mb-3">{error}</p>
+            <button onClick={load} className="px-4 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+                <div className="h-1 shimmer-row" />
+                <div className="p-5 space-y-3">
+                  <div className="h-5 w-36 rounded shimmer-row" />
+                  <div className="h-3 w-full rounded shimmer-row" />
+                  <div className="h-3 w-20 rounded shimmer-row" />
+                  <div className="h-8 w-28 rounded shimmer-row" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : templates.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">No templates yet. Create one from an existing project.</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-[#C5A572]/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#C5A572]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">No templates yet</p>
+            <p className="text-sm text-gray-400 mb-4">Create one from an existing project.</p>
+            <button onClick={() => setShowCreate(true)} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Create Template
+            </button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 slide-in">
             {templates.map((t) => (
-              <div key={t.id} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden hover:shadow-md transition-shadow">
+              <div key={t.id} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden hover:shadow-md transition-shadow card-hover">
                 <div className="h-1 bg-[#C5A572]" />
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-2">
@@ -127,8 +162,8 @@ export default function TemplatesPage() {
 
       {/* Create from project modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4 scale-in">
             <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               Create Template from Project
             </h3>
@@ -157,8 +192,8 @@ export default function TemplatesPage() {
 
       {/* Clone template modal */}
       {showClone && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowClone(null); }}>
-          <form onSubmit={handleClone} className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowClone(null); }}>
+          <form onSubmit={handleClone} className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4 scale-in">
             <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               Clone: {showClone.name}
             </h3>

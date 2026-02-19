@@ -102,17 +102,48 @@ export default function VersionHistoryPage() {
 
       <div className="p-8">
         {!selectedProject ? (
-          <p className="text-center text-gray-400 py-12">Select a project to view its version history</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <p className="text-gray-400">Select a project to view its version history</p>
+          </div>
         ) : loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-[#C5A572] border-t-transparent animate-spin" />
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Session Timeline</h3>
+              <div className="relative">
+                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#E8E0D4]" />
+                <div className="space-y-4">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="relative pl-12">
+                      <div className="absolute left-2 top-3 w-5 h-5 rounded-full border-2 border-[#E8E0D4] shimmer-row" />
+                      <div className="bg-white rounded-lg border border-[#E8E0D4] p-5 space-y-2">
+                        <div className="h-4 w-40 rounded shimmer-row" />
+                        <div className="h-3 w-24 rounded shimmer-row" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         ) : sessions.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">No sessions for this project</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-[#C5A572]/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#C5A572]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">No sessions yet</p>
+            <p className="text-sm text-gray-400">Start a presentation to begin recording version history.</p>
+          </div>
         ) : (
           <div className="space-y-8">
             {/* Timeline */}
-            <div>
+            <div className="slide-in">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Session Timeline</h3>
               <div className="relative">
                 {/* Vertical line */}
@@ -124,7 +155,7 @@ export default function VersionHistoryPage() {
                     const isViewing = selectedSnapshot === s.id;
 
                     return (
-                      <div key={s.id} className="relative pl-12">
+                      <div key={s.id} className="relative pl-12 fade-in" style={{ animationDelay: `${idx * 60}ms` }}>
                         {/* Gold dot */}
                         <div className={`absolute left-2 top-3 w-5 h-5 rounded-full border-2 ${
                           hasSnapshot
@@ -218,7 +249,7 @@ export default function VersionHistoryPage() {
 
             {/* Diff Comparison */}
             {sessions.length >= 2 && (
-              <div>
+              <div className="slide-in">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Compare Sessions</h3>
                 <div className="bg-white rounded-lg border border-[#E8E0D4] p-5">
                   <div className="flex items-center gap-3 mb-4">

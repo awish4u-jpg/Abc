@@ -7,6 +7,7 @@ const CATEGORIES = ['Infrastructure', 'Software', 'Hardware', 'Platform', 'Servi
 export default function LibraryPage() {
   const [techs, setTechs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterCat, setFilterCat] = useState('');
@@ -26,13 +27,14 @@ export default function LibraryPage() {
 
   const load = () => {
     setLoading(true);
+    setError(null);
     const params = {};
     if (filterCode) params.coe_code = filterCode;
     if (filterCat) params.category = filterCat;
     if (search) params.q = search;
     api.getLibrary(params)
       .then(setTechs)
-      .catch(() => setTechs([]))
+      .catch((err) => { setTechs([]); setError(err.message || 'Failed to load library'); })
       .finally(() => setLoading(false));
   };
 
@@ -119,6 +121,39 @@ export default function LibraryPage() {
 
   return (
     <div>
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200px 0; }
+          100% { background-position: calc(200px + 100%) 0; }
+        }
+        .shimmer-row {
+          background: linear-gradient(90deg, #E8E0D4 25%, #F5EFE6 50%, #E8E0D4 75%);
+          background-size: 200px 100%;
+          animation: shimmer 1.5s infinite;
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in {
+          animation: slideIn 0.35s ease-out both;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .fade-in {
+          animation: fadeIn 0.25s ease-out both;
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .scale-in {
+          animation: scaleIn 0.25s ease-out both;
+        }
+      `}</style>
+
       <div className="px-8 py-5 bg-white border-b border-[#E8E0D4] flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
           Master Technology Library
@@ -172,16 +207,65 @@ export default function LibraryPage() {
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-[#C5A572] border-t-transparent animate-spin" />
+        {error && !loading ? (
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">Something went wrong</p>
+            <p className="text-sm text-gray-400 mb-4">{error}</p>
+            <button onClick={load} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#E8E0D4] bg-[#FAFAF7]">
+                  <th className="w-8 px-3 py-3" />
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">Name</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">Vendor</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">COE</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">Category</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">Certifications</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1,2,3,4,5,6].map(i => (
+                  <tr key={i} className="border-b border-[#E8E0D4]">
+                    <td className="px-3 py-4"><div className="h-4 w-4 rounded shimmer-row" /></td>
+                    <td className="px-5 py-4"><div className="h-4 w-28 rounded shimmer-row" /></td>
+                    <td className="px-5 py-4"><div className="h-4 w-20 rounded shimmer-row" /></td>
+                    <td className="px-5 py-4"><div className="h-4 w-12 rounded shimmer-row" /></td>
+                    <td className="px-5 py-4"><div className="h-4 w-16 rounded shimmer-row" /></td>
+                    <td className="px-5 py-4"><div className="h-4 w-20 rounded shimmer-row" /></td>
+                    <td className="px-5 py-4"><div className="h-4 w-16 rounded shimmer-row ml-auto" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : techs.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">
-            {search || filterCode || filterCat ? 'No technologies match your filters' : 'No technologies in the library. Add one to get started.'}
-          </p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-[#C5A572]/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#C5A572]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">{search || filterCode || filterCat ? 'No technologies match your filters' : 'No technologies in the library'}</p>
+            <p className="text-sm text-gray-400 mb-4">{search || filterCode || filterCat ? 'Try adjusting your search or filters.' : 'Add your first technology to get started.'}</p>
+            {!(search || filterCode || filterCat) && (
+              <button onClick={openCreate} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+                Add Technology
+              </button>
+            )}
+          </div>
         ) : (
-          <div className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+          <div className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden slide-in">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#E8E0D4] bg-[#FAFAF7]">
@@ -252,8 +336,8 @@ export default function LibraryPage() {
 
       {/* Create/Edit Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
-          <form onSubmit={handleSave} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
+          <form onSubmit={handleSave} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto scale-in">
             <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               {editing ? 'Edit Library Technology' : 'Add to Library'}
             </h3>
@@ -313,8 +397,8 @@ export default function LibraryPage() {
 
       {/* Import to Project Modal */}
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowImport(null); }}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowImport(null); }}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4 scale-in">
             <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               {showImport.bulk ? `Import ${selectedForBulk.size} Technologies` : `Import: ${showImport.name}`}
             </h3>

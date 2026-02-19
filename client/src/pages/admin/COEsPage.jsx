@@ -6,6 +6,7 @@ export default function COEsPage() {
   const [selectedProject, setSelectedProject] = useState('');
   const [coes, setCoes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [expandedCoe, setExpandedCoe] = useState(null);
 
@@ -29,9 +30,10 @@ export default function COEsPage() {
   const loadCoes = (projectId) => {
     if (!projectId) { setCoes([]); setLoading(false); return; }
     setLoading(true);
+    setError(null);
     api.getCoes({ project_id: projectId })
       .then(setCoes)
-      .catch(() => setCoes([]))
+      .catch((err) => setError(err.message || 'Failed to load COEs'))
       .finally(() => setLoading(false));
   };
 
@@ -121,7 +123,7 @@ export default function COEsPage() {
           <select
             value={selectedProject}
             onChange={(e) => { setSelectedProject(e.target.value); setExpandedId(null); }}
-            className="px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm bg-white focus:outline-none focus:border-[#C5A572]"
+            className="px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm bg-white focus:outline-none focus:border-[#C5A572] transition-colors"
           >
             <option value="">Select project...</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -136,17 +138,57 @@ export default function COEsPage() {
 
       <div className="p-8">
         {!selectedProject ? (
-          <p className="text-center text-gray-400 py-12">Select a project to manage its COEs</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+            <p className="text-gray-400">Select a project to manage its COEs</p>
+          </div>
         ) : loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 rounded-full border-2 border-[#C5A572] border-t-transparent animate-spin" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+                <div className="h-1 shimmer-row" />
+                <div className="p-4 space-y-3">
+                  <div className="h-5 w-32 rounded shimmer-row" />
+                  <div className="h-3 w-16 rounded shimmer-row" />
+                  <div className="h-3 w-full rounded shimmer-row" />
+                  <div className="h-3 w-20 rounded shimmer-row" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-12 slide-in">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-sm text-gray-500 mb-3">{error}</p>
+            <button onClick={() => loadCoes(selectedProject)} className="px-4 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Retry
+            </button>
           </div>
         ) : coes.length === 0 ? (
-          <p className="text-center text-gray-400 py-12">No COEs yet. Add one to get started.</p>
+          <div className="text-center py-16 slide-in">
+            <div className="w-16 h-16 rounded-full bg-[#C5A572]/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#C5A572]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <p className="text-gray-500 mb-1 font-medium">No COEs yet</p>
+            <p className="text-sm text-gray-400 mb-4">Add a Center of Excellence to get started.</p>
+            <button onClick={openCreateCoe} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+              Add COE
+            </button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 slide-in">
             {coes.map((c) => (
-              <div key={c.id} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden">
+              <div key={c.id} className="bg-white rounded-lg border border-[#E8E0D4] overflow-hidden card-hover">
                 <div className="h-1 bg-[#C5A572]" />
                 <div className="p-4">
                   <div className="flex items-start justify-between mb-2">
@@ -160,20 +202,20 @@ export default function COEsPage() {
                   </div>
                   {c.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{c.description}</p>}
                   <div className="flex items-center gap-2">
-                    <button onClick={() => expandCoe(c.id)} className="text-xs text-[#C5A572] hover:text-[#B8975F] font-medium">
+                    <button onClick={() => expandCoe(c.id)} className="text-xs text-[#C5A572] hover:text-[#B8975F] font-medium transition-colors">
                       {expandedId === c.id ? 'Collapse' : 'Expand'}
                     </button>
-                    <button onClick={() => openEditCoe(c)} className="text-xs text-gray-400 hover:text-[#C5A572]">Edit</button>
-                    <button onClick={() => handleDeleteCoe(c.id)} className="text-xs text-gray-400 hover:text-red-500">Delete</button>
+                    <button onClick={() => openEditCoe(c)} className="text-xs text-gray-400 hover:text-[#C5A572] transition-colors">Edit</button>
+                    <button onClick={() => handleDeleteCoe(c.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Delete</button>
                   </div>
                 </div>
 
                 {/* Expanded technologies */}
                 {expandedId === c.id && expandedCoe && (
-                  <div className="border-t border-[#E8E0D4] bg-[#FAFAF7] p-4">
+                  <div className="border-t border-[#E8E0D4] bg-[#FAFAF7] p-4 slide-in">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Technologies</h4>
-                      <button onClick={openCreateTech} className="text-xs text-[#C5A572] hover:text-[#B8975F] font-medium">+ Add</button>
+                      <button onClick={openCreateTech} className="text-xs text-[#C5A572] hover:text-[#B8975F] font-medium transition-colors">+ Add</button>
                     </div>
                     {expandedCoe.technologies?.length > 0 ? (
                       <div className="space-y-2">
@@ -182,8 +224,8 @@ export default function COEsPage() {
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-900">{t.name}</span>
                               <div className="flex gap-2">
-                                <button onClick={() => openEditTech(t)} className="text-[10px] text-gray-400 hover:text-[#C5A572]">Edit</button>
-                                <button onClick={() => handleDeleteTech(t.id)} className="text-[10px] text-gray-400 hover:text-red-500">Del</button>
+                                <button onClick={() => openEditTech(t)} className="text-[10px] text-gray-400 hover:text-[#C5A572] transition-colors">Edit</button>
+                                <button onClick={() => handleDeleteTech(t.id)} className="text-[10px] text-gray-400 hover:text-red-500 transition-colors">Del</button>
                               </div>
                             </div>
                             {t.vendor && <p className="text-[10px] text-gray-400">{t.vendor}</p>}
@@ -204,26 +246,26 @@ export default function COEsPage() {
 
       {/* COE Form Modal */}
       {showCoeForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowCoeForm(false); }}>
-          <form onSubmit={handleSaveCoe} className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowCoeForm(false); }}>
+          <form onSubmit={handleSaveCoe} className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4 scale-in">
             <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               {editingCoe ? 'Edit COE' : 'Add COE'}
             </h3>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Name *</label>
-              <input value={coeForm.name} onChange={(e) => setCoeForm({ ...coeForm, name: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <input value={coeForm.name} onChange={(e) => setCoeForm({ ...coeForm, name: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Code</label>
-              <input value={coeForm.code} onChange={(e) => setCoeForm({ ...coeForm, code: e.target.value })} placeholder="e.g. NET, SEC, DATA" className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <input value={coeForm.code} onChange={(e) => setCoeForm({ ...coeForm, code: e.target.value })} placeholder="e.g. NET, SEC, DATA" className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Description</label>
-              <textarea value={coeForm.description} onChange={(e) => setCoeForm({ ...coeForm, description: e.target.value })} rows={3} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <textarea value={coeForm.description} onChange={(e) => setCoeForm({ ...coeForm, description: e.target.value })} rows={3} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setShowCoeForm(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
-              <button type="submit" className="px-6 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F]">Save</button>
+              <button type="button" onClick={() => setShowCoeForm(false)} className="px-4 py-2 text-sm text-gray-500 transition-colors">Cancel</button>
+              <button type="submit" className="px-6 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">Save</button>
             </div>
           </form>
         </div>
@@ -231,44 +273,44 @@ export default function COEsPage() {
 
       {/* Technology Form Modal */}
       {showTechForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowTechForm(false); }}>
-          <form onSubmit={handleSaveTech} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowTechForm(false); }}>
+          <form onSubmit={handleSaveTech} className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto scale-in">
             <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
               {editingTech ? 'Edit Technology' : 'Add Technology'}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Name *</label>
-                <input value={techForm.name} onChange={(e) => setTechForm({ ...techForm, name: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+                <input value={techForm.name} onChange={(e) => setTechForm({ ...techForm, name: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Vendor</label>
-                <input value={techForm.vendor} onChange={(e) => setTechForm({ ...techForm, vendor: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+                <input value={techForm.vendor} onChange={(e) => setTechForm({ ...techForm, vendor: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Description</label>
-              <textarea value={techForm.description} onChange={(e) => setTechForm({ ...techForm, description: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <textarea value={techForm.description} onChange={(e) => setTechForm({ ...techForm, description: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Vision</label>
-              <textarea value={techForm.vision} onChange={(e) => setTechForm({ ...techForm, vision: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <textarea value={techForm.vision} onChange={(e) => setTechForm({ ...techForm, vision: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Why It Works</label>
-              <textarea value={techForm.why_it_works} onChange={(e) => setTechForm({ ...techForm, why_it_works: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <textarea value={techForm.why_it_works} onChange={(e) => setTechForm({ ...techForm, why_it_works: e.target.value })} rows={2} className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Key Points (comma-separated)</label>
-              <input value={techForm.key_points} onChange={(e) => setTechForm({ ...techForm, key_points: e.target.value })} placeholder="Point 1, Point 2, Point 3" className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <input value={techForm.key_points} onChange={(e) => setTechForm({ ...techForm, key_points: e.target.value })} placeholder="Point 1, Point 2, Point 3" className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Certifications (comma-separated tags)</label>
-              <input value={techForm.certifications} onChange={(e) => setTechForm({ ...techForm, certifications: e.target.value })} placeholder="ISO 27001, SOC 2, FedRAMP" className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572]" />
+              <input value={techForm.certifications} onChange={(e) => setTechForm({ ...techForm, certifications: e.target.value })} placeholder="ISO 27001, SOC 2, FedRAMP" className="w-full px-3 py-2 rounded-lg border border-[#E8E0D4] text-sm focus:outline-none focus:border-[#C5A572] transition-colors" />
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setShowTechForm(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
-              <button type="submit" className="px-6 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F]">Save</button>
+              <button type="button" onClick={() => setShowTechForm(false)} className="px-4 py-2 text-sm text-gray-500 transition-colors">Cancel</button>
+              <button type="submit" className="px-6 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">Save</button>
             </div>
           </form>
         </div>
