@@ -11,6 +11,9 @@ async function initializeDatabase() {
     driver: sqlite3.Database,
   });
 
+  await db.exec('PRAGMA journal_mode = WAL');
+  await db.exec('PRAGMA foreign_keys = ON');
+
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
   await db.exec(schema);
 
