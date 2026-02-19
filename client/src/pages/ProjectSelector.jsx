@@ -29,6 +29,12 @@ export default function ProjectSelector() {
           <p className="text-xs uppercase tracking-[0.25em] text-gray-400 font-medium">
             Interactive Technology Presenter
           </p>
+          <a
+            href="/admin"
+            className="inline-block mt-4 text-xs text-[#C5A572] hover:text-[#B8975F] transition-colors font-medium"
+          >
+            Admin Panel &rarr;
+          </a>
         </div>
 
         {/* Projects grid */}

@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { getDb } = require('../../database/init');
 
 const router = express.Router();
 
@@ -42,18 +43,80 @@ const upload = multer({
   },
 });
 
-// POST /api/upload — multipart file upload
-router.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file provided. Use form field name "file".' });
+// POST /api/upload — multipart file upload (tracks in media table)
+router.post('/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided. Use form field name "file".' });
+    }
+    const url = `/api/uploads/${req.file.filename}`;
+    const { coe_id, area_id, technology_id } = req.body;
+
+    const result = await getDb().run(
+      'INSERT INTO media (filename, original_name, mimetype, size, url, coe_id, area_id, technology_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [req.file.filename, req.file.originalname, req.file.mimetype, req.file.size, url, coe_id || null, area_id || null, technology_id || null]
+    );
+
+    const record = await getDb().get('SELECT * FROM media WHERE id = ?', result.lastID);
+    res.status(201).json(record);
+  } catch (err) {
+    next(err);
   }
-  res.status(201).json({
-    filename: req.file.filename,
-    originalName: req.file.originalname,
-    mimetype: req.file.mimetype,
-    size: req.file.size,
-    url: `/api/uploads/${req.file.filename}`,
-  });
+});
+
+// GET /api/media — list all tracked uploads with optional filters
+router.get('/media', async (req, res, next) => {
+  try {
+    const { mimetype, coe_id, area_id } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (mimetype) {
+      conditions.push('m.mimetype LIKE ?');
+      params.push(`${mimetype}%`);
+    }
+    if (coe_id) {
+      conditions.push('m.coe_id = ?');
+      params.push(coe_id);
+    }
+    if (area_id) {
+      conditions.push('m.area_id = ?');
+      params.push(area_id);
+    }
+
+    let query = `SELECT m.*, c.name AS coe_name, a.name AS area_name
+      FROM media m
+      LEFT JOIN coes c ON c.id = m.coe_id
+      LEFT JOIN areas a ON a.id = m.area_id`;
+    if (conditions.length) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' ORDER BY m.created_at DESC';
+
+    const media = await getDb().all(query, params);
+    res.json(media);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/media/:id — delete a tracked upload
+router.delete('/media/:id', async (req, res, next) => {
+  try {
+    const record = await getDb().get('SELECT * FROM media WHERE id = ?', req.params.id);
+    if (!record) return res.status(404).json({ error: 'Media not found' });
+
+    // Remove file from disk
+    const filePath = path.join(UPLOADS_DIR, record.filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await getDb().run('DELETE FROM media WHERE id = ?', req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/uploads/:filename — serve an uploaded file

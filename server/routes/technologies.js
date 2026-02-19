@@ -65,7 +65,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/technologies
 router.post('/', async (req, res, next) => {
   try {
-    const { project_id, coe_id, name, description, vendor } = req.body;
+    const { project_id, coe_id, name, description, vendor, vision, why_it_works, key_points, certifications } = req.body;
     if (!project_id) {
       return res.status(400).json({ error: 'project_id is required' });
     }
@@ -83,8 +83,8 @@ router.post('/', async (req, res, next) => {
       }
     }
     const result = await getDb().run(
-      'INSERT INTO technologies (project_id, coe_id, name, description, vendor) VALUES (?, ?, ?, ?, ?)',
-      [project_id, coe_id || null, name.trim(), description || null, vendor || null]
+      'INSERT INTO technologies (project_id, coe_id, name, description, vendor, vision, why_it_works, key_points, certifications) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [project_id, coe_id || null, name.trim(), description || null, vendor || null, vision || null, why_it_works || null, key_points || null, certifications || null]
     );
     const tech = await getDb().get(`${TECH_SELECT} WHERE t.id = ?`, result.lastID);
     res.status(201).json(tech);
@@ -96,7 +96,7 @@ router.post('/', async (req, res, next) => {
 // PUT /api/technologies/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { coe_id, name, description, vendor } = req.body;
+    const { coe_id, name, description, vendor, vision, why_it_works, key_points, certifications } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'name is required' });
     }
@@ -107,8 +107,8 @@ router.put('/:id', async (req, res, next) => {
       }
     }
     const result = await getDb().run(
-      'UPDATE technologies SET coe_id = ?, name = ?, description = ?, vendor = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [coe_id || null, name.trim(), description || null, vendor || null, req.params.id]
+      'UPDATE technologies SET coe_id = ?, name = ?, description = ?, vendor = ?, vision = ?, why_it_works = ?, key_points = ?, certifications = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [coe_id || null, name.trim(), description || null, vendor || null, vision || null, why_it_works || null, key_points || null, certifications || null, req.params.id]
     );
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Technology not found' });

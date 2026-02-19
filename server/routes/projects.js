@@ -3,12 +3,18 @@ const { getDb } = require('../../database/init');
 
 const router = express.Router();
 
-// GET /api/projects
+// GET /api/projects?is_template=0|1
 router.get('/', async (req, res, next) => {
   try {
-    const projects = await getDb().all(
-      'SELECT * FROM projects ORDER BY created_at DESC'
-    );
+    const { is_template } = req.query;
+    let query = 'SELECT * FROM projects';
+    const params = [];
+    if (is_template !== undefined) {
+      query += ' WHERE is_template = ?';
+      params.push(is_template === 'true' || is_template === '1' ? 1 : 0);
+    }
+    query += ' ORDER BY created_at DESC';
+    const projects = await getDb().all(query, params);
     res.json(projects);
   } catch (err) {
     next(err);
@@ -32,13 +38,13 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/projects
 router.post('/', async (req, res, next) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, client, type, is_template } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'name is required' });
     }
     const result = await getDb().run(
-      'INSERT INTO projects (name, description) VALUES (?, ?)',
-      [name.trim(), description || null]
+      'INSERT INTO projects (name, description, client, type, is_template) VALUES (?, ?, ?, ?, ?)',
+      [name.trim(), description || null, client || null, type || null, is_template ? 1 : 0]
     );
     const project = await getDb().get(
       'SELECT * FROM projects WHERE id = ?',
@@ -53,13 +59,13 @@ router.post('/', async (req, res, next) => {
 // PUT /api/projects/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, client, type, is_template } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'name is required' });
     }
     const result = await getDb().run(
-      'UPDATE projects SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name.trim(), description || null, req.params.id]
+      'UPDATE projects SET name = ?, description = ?, client = ?, type = ?, is_template = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name.trim(), description || null, client || null, type || null, is_template !== undefined ? (is_template ? 1 : 0) : 0, req.params.id]
     );
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Project not found' });
@@ -98,10 +104,11 @@ router.post('/:id/clone', async (req, res, next) => {
     if (!source) return res.status(404).json({ error: 'Project not found' });
 
     const cloneName = (req.body.name || `${source.name} (Copy)`).trim();
+    const isTemplate = req.body.is_template !== undefined ? (req.body.is_template ? 1 : 0) : 0;
 
     const projResult = await db.run(
-      'INSERT INTO projects (name, description) VALUES (?, ?)',
-      [cloneName, source.description]
+      'INSERT INTO projects (name, description, client, type, is_template) VALUES (?, ?, ?, ?, ?)',
+      [cloneName, source.description, req.body.client || source.client, req.body.type || source.type, isTemplate]
     );
     const newProjectId = projResult.lastID;
 
@@ -110,8 +117,8 @@ router.post('/:id/clone', async (req, res, next) => {
     const oldCoes = await db.all('SELECT * FROM coes WHERE project_id = ?', source.id);
     for (const c of oldCoes) {
       const r = await db.run(
-        'INSERT INTO coes (project_id, name, description) VALUES (?, ?, ?)',
-        [newProjectId, c.name, c.description]
+        'INSERT INTO coes (project_id, name, description, code) VALUES (?, ?, ?, ?)',
+        [newProjectId, c.name, c.description, c.code]
       );
       coeMap[c.id] = r.lastID;
     }
@@ -121,8 +128,8 @@ router.post('/:id/clone', async (req, res, next) => {
     const oldTechs = await db.all('SELECT * FROM technologies WHERE project_id = ?', source.id);
     for (const t of oldTechs) {
       const r = await db.run(
-        'INSERT INTO technologies (project_id, coe_id, name, description, vendor) VALUES (?, ?, ?, ?, ?)',
-        [newProjectId, t.coe_id ? (coeMap[t.coe_id] || null) : null, t.name, t.description, t.vendor]
+        'INSERT INTO technologies (project_id, coe_id, name, description, vendor, vision, why_it_works, key_points, certifications) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [newProjectId, t.coe_id ? (coeMap[t.coe_id] || null) : null, t.name, t.description, t.vendor, t.vision, t.why_it_works, t.key_points, t.certifications]
       );
       techMap[t.id] = r.lastID;
     }

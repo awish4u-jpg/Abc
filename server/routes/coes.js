@@ -7,13 +7,13 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const { project_id } = req.query;
-    let query = 'SELECT * FROM coes';
+    let query = 'SELECT c.*, (SELECT COUNT(*) FROM technologies t WHERE t.coe_id = c.id) AS tech_count FROM coes c';
     const params = [];
     if (project_id) {
-      query += ' WHERE project_id = ?';
+      query += ' WHERE c.project_id = ?';
       params.push(project_id);
     }
-    query += ' ORDER BY name';
+    query += ' ORDER BY c.name';
     const coes = await getDb().all(query, params);
     res.json(coes);
   } catch (err) {
@@ -40,7 +40,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/coes
 router.post('/', async (req, res, next) => {
   try {
-    const { project_id, name, description } = req.body;
+    const { project_id, name, description, code } = req.body;
     if (!project_id) {
       return res.status(400).json({ error: 'project_id is required' });
     }
@@ -52,8 +52,8 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'project_id references a non-existent project' });
     }
     const result = await getDb().run(
-      'INSERT INTO coes (project_id, name, description) VALUES (?, ?, ?)',
-      [project_id, name.trim(), description || null]
+      'INSERT INTO coes (project_id, name, description, code) VALUES (?, ?, ?, ?)',
+      [project_id, name.trim(), description || null, code || null]
     );
     const coe = await getDb().get('SELECT * FROM coes WHERE id = ?', result.lastID);
     res.status(201).json(coe);
@@ -65,13 +65,13 @@ router.post('/', async (req, res, next) => {
 // PUT /api/coes/:id
 router.put('/:id', async (req, res, next) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, code } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'name is required' });
     }
     const result = await getDb().run(
-      'UPDATE coes SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name.trim(), description || null, req.params.id]
+      'UPDATE coes SET name = ?, description = ?, code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name.trim(), description || null, code || null, req.params.id]
     );
     if (result.changes === 0) {
       return res.status(404).json({ error: 'COE not found' });

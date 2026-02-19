@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT,
+  client TEXT,
+  type TEXT,
+  is_template INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -26,6 +29,7 @@ CREATE TABLE IF NOT EXISTS coes (
   project_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
+  code TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -39,6 +43,10 @@ CREATE TABLE IF NOT EXISTS technologies (
   name TEXT NOT NULL,
   description TEXT,
   vendor TEXT,
+  vision TEXT,
+  why_it_works TEXT,
+  key_points TEXT,
+  certifications TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
@@ -65,6 +73,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   project_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed', 'cancelled')),
+  attendees TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -80,4 +89,21 @@ CREATE TABLE IF NOT EXISTS decisions (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
   FOREIGN KEY (area_technology_id) REFERENCES area_technologies(id) ON DELETE SET NULL
+);
+
+-- Media: tracked uploads for admin management
+CREATE TABLE IF NOT EXISTS media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  filename TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  mimetype TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  url TEXT NOT NULL,
+  coe_id INTEGER,
+  area_id INTEGER,
+  technology_id INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coe_id) REFERENCES coes(id) ON DELETE SET NULL,
+  FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE SET NULL,
+  FOREIGN KEY (technology_id) REFERENCES technologies(id) ON DELETE SET NULL
 );

@@ -1,6 +1,13 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ProjectSelector from './pages/ProjectSelector';
 import PresentationView from './pages/PresentationView';
+import AdminLayout from './pages/admin/AdminLayout';
+import ProjectsPage from './pages/admin/ProjectsPage';
+import COEsPage from './pages/admin/COEsPage';
+import TechnologiesPage from './pages/admin/TechnologiesPage';
+import MediaPage from './pages/admin/MediaPage';
+import TemplatesPage from './pages/admin/TemplatesPage';
+import SessionsPage from './pages/admin/SessionsPage';
 
 export default function App() {
   return (
@@ -8,6 +15,15 @@ export default function App() {
       <Routes>
         <Route path="/" element={<ProjectSelector />} />
         <Route path="/present/:projectId" element={<PresentationView />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="/admin/projects" replace />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="coes" element={<COEsPage />} />
+          <Route path="technologies" element={<TechnologiesPage />} />
+          <Route path="media" element={<MediaPage />} />
+          <Route path="templates" element={<TemplatesPage />} />
+          <Route path="sessions" element={<SessionsPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
