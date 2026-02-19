@@ -113,6 +113,25 @@ router.post('/:id/decisions', async (req, res, next) => {
   }
 });
 
+// DELETE /api/sessions/:sessionId/decisions/:decisionId
+router.delete('/:sessionId/decisions/:decisionId', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const decision = await db.get(
+      'SELECT d.*, s.status FROM decisions d JOIN sessions s ON s.id = d.session_id WHERE d.id = ?',
+      req.params.decisionId
+    );
+    if (!decision) return res.status(404).json({ error: 'Decision not found' });
+    if (decision.status !== 'active') {
+      return res.status(400).json({ error: 'Cannot delete decisions from a non-active session' });
+    }
+    await db.run('DELETE FROM decisions WHERE id = ?', req.params.decisionId);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/sessions/:id/decisions
 router.get('/:id/decisions', async (req, res, next) => {
   try {

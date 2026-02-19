@@ -77,7 +77,8 @@ export const api = {
     request(`/sessions/${sessionId}/decisions`, { method: 'POST', body: JSON.stringify(body) }),
   getDecisions: (sessionId) => request(`/sessions/${sessionId}/decisions`),
   getReport: (sessionId) => request(`/sessions/${sessionId}/report`),
-  deleteDecision: (id) => request(`/decisions/${id}`, { method: 'DELETE' }),
+  deleteDecision: (sessionId, decisionId) =>
+    request(`/sessions/${sessionId}/decisions/${decisionId}`, { method: 'DELETE' }),
   createSnapshot: (sessionId) =>
     request(`/sessions/${sessionId}/snapshot`, { method: 'POST' }),
   getSnapshot: (sessionId) => request(`/sessions/${sessionId}/snapshot`),

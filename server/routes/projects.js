@@ -63,13 +63,14 @@ router.put('/:id', async (req, res, next) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'name is required' });
     }
-    const result = await getDb().run(
-      'UPDATE projects SET name = ?, description = ?, client = ?, type = ?, is_template = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [name.trim(), description || null, client || null, type || null, is_template !== undefined ? (is_template ? 1 : 0) : 0, req.params.id]
-    );
-    if (result.changes === 0) {
+    const existing = await getDb().get('SELECT * FROM projects WHERE id = ?', req.params.id);
+    if (!existing) {
       return res.status(404).json({ error: 'Project not found' });
     }
+    await getDb().run(
+      'UPDATE projects SET name = ?, description = ?, client = ?, type = ?, is_template = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name.trim(), description || null, client || null, type || null, is_template !== undefined ? (is_template ? 1 : 0) : existing.is_template, req.params.id]
+    );
     const project = await getDb().get(
       'SELECT * FROM projects WHERE id = ?',
       req.params.id

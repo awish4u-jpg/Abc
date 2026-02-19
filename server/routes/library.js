@@ -43,6 +43,8 @@ router.post('/bulk-import', async (req, res, next) => {
     const { project_id, coe_id, library_ids } = req.body;
     if (!project_id) return res.status(400).json({ error: 'project_id is required' });
     if (!library_ids || !library_ids.length) return res.status(400).json({ error: 'library_ids is required' });
+    const project = await db.get('SELECT id FROM projects WHERE id = ?', project_id);
+    if (!project) return res.status(400).json({ error: 'project_id references a non-existent project' });
 
     const imported = [];
     for (const libId of library_ids) {
