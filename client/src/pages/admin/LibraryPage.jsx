@@ -121,39 +121,6 @@ export default function LibraryPage() {
 
   return (
     <div>
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200px 0; }
-          100% { background-position: calc(200px + 100%) 0; }
-        }
-        .shimmer-row {
-          background: linear-gradient(90deg, #E8E0D4 25%, #F5EFE6 50%, #E8E0D4 75%);
-          background-size: 200px 100%;
-          animation: shimmer 1.5s infinite;
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .slide-in {
-          animation: slideIn 0.35s ease-out both;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .fade-in {
-          animation: fadeIn 0.25s ease-out both;
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .scale-in {
-          animation: scaleIn 0.25s ease-out both;
-        }
-      `}</style>
-
       <div className="px-8 py-5 bg-white border-b border-[#E8E0D4] flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
           Master Technology Library
