@@ -8,6 +8,7 @@ import SwapDropdown from '../components/SwapDropdown';
 import AddTechModal from '../components/AddTechModal';
 import NotesEditor from '../components/NotesEditor';
 import HelpOverlay from '../components/HelpOverlay';
+import ReportPreviewModal from '../components/ReportPreviewModal';
 
 export default function PresentationView() {
   const { projectId } = useParams();
@@ -26,6 +27,7 @@ export default function PresentationView() {
   const [notesTarget, setNotesTarget] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [activeTechIdx, setActiveTechIdx] = useState(0);
 
   const undoSize = useSyncExternalStore(
@@ -211,9 +213,9 @@ export default function PresentationView() {
     }
   }, []);
 
-  const handleReport = useCallback(async () => {
+  const handleReport = useCallback(() => {
     if (!session) return;
-    window.open(`/api/sessions/${session.id}/report/pdf`, '_blank');
+    setShowReport(true);
   }, [session]);
 
   const handleFullscreen = useCallback(() => {
@@ -248,7 +250,8 @@ export default function PresentationView() {
       swap: () => { if (areaTechs[activeTechIdx]) setSwapTarget(areaTechs[activeTechIdx]); },
       add: () => setShowAddModal(true),
       Escape: () => {
-        if (showHelp) setShowHelp(false);
+        if (showReport) setShowReport(false);
+        else if (showHelp) setShowHelp(false);
         else if (showAddModal) setShowAddModal(false);
         else if (swapTarget) setSwapTarget(null);
         else if (notesTarget) setNotesTarget(null);
@@ -259,7 +262,7 @@ export default function PresentationView() {
       help: () => setShowHelp((v) => !v),
       'mod+z': handleUndo,
     },
-    [activeAreaIdx, areas.length, areaTechs, activeTechIdx, showHelp, showAddModal, swapTarget, notesTarget, handleToggle, handleReport, handleFullscreen, handleUndo]
+    [activeAreaIdx, areas.length, areaTechs, activeTechIdx, showReport, showHelp, showAddModal, swapTarget, notesTarget, handleToggle, handleReport, handleFullscreen, handleUndo]
   );
 
   // --- RENDER ---
@@ -494,6 +497,13 @@ export default function PresentationView() {
       )}
 
       {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
+
+      {showReport && session && (
+        <ReportPreviewModal
+          sessionId={session.id}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }
