@@ -9,6 +9,7 @@ const technologies = require('./technologies');
 const areaTechnologies = require('./area-technologies');
 const sessions = require('./sessions');
 const media = require('./media');
+const library = require('./library');
 
 router.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -20,6 +21,7 @@ router.use('/coes', coes);
 router.use('/technologies', technologies);
 router.use('/area-technologies', areaTechnologies);
 router.use('/sessions', sessions);
+router.use('/library', library);
 router.use('/', media);
 
 // Multer error handler

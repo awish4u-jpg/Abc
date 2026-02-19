@@ -8,6 +8,9 @@ import TechnologiesPage from './pages/admin/TechnologiesPage';
 import MediaPage from './pages/admin/MediaPage';
 import TemplatesPage from './pages/admin/TemplatesPage';
 import SessionsPage from './pages/admin/SessionsPage';
+import LibraryPage from './pages/admin/LibraryPage';
+import WizardPage from './pages/admin/WizardPage';
+import VersionHistoryPage from './pages/admin/VersionHistoryPage';
 
 export default function App() {
   return (
@@ -21,8 +24,11 @@ export default function App() {
           <Route path="coes" element={<COEsPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />
           <Route path="media" element={<MediaPage />} />
+          <Route path="library" element={<LibraryPage />} />
           <Route path="templates" element={<TemplatesPage />} />
           <Route path="sessions" element={<SessionsPage />} />
+          <Route path="wizard" element={<WizardPage />} />
+          <Route path="versions" element={<VersionHistoryPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

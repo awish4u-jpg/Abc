@@ -18,11 +18,33 @@ router.post('/', async (req, res, next) => {
     if (!project) {
       return res.status(400).json({ error: 'project_id references a non-existent project' });
     }
-    const result = await getDb().run(
+    const db = getDb();
+    const result = await db.run(
       'INSERT INTO sessions (project_id, name) VALUES (?, ?)',
       [project_id, name.trim()]
     );
-    const session = await getDb().get('SELECT * FROM sessions WHERE id = ?', result.lastID);
+    const session = await db.get('SELECT * FROM sessions WHERE id = ?', result.lastID);
+
+    // Auto-snapshot: capture baseline state
+    const rows = await db.all(
+      `SELECT at.area_id, a.name AS area_name, at.technology_id,
+              t.name AS technology_name, t.vendor,
+              c.name AS coe_name, at.is_selected, at.notes
+       FROM area_technologies at
+       JOIN areas a ON a.id = at.area_id
+       JOIN technologies t ON t.id = at.technology_id
+       LEFT JOIN coes c ON c.id = t.coe_id
+       WHERE a.project_id = ?
+       ORDER BY a.sort_order, a.name, t.name`,
+      project_id
+    );
+    for (const row of rows) {
+      await db.run(
+        'INSERT INTO session_snapshots (session_id, area_id, area_name, technology_id, technology_name, vendor, coe_name, is_selected, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [session.id, row.area_id, row.area_name, row.technology_id, row.technology_name, row.vendor, row.coe_name, row.is_selected, row.notes]
+      );
+    }
+
     res.status(201).json(session);
   } catch (err) {
     next(err);
@@ -602,6 +624,264 @@ router.get('/:id/report/pdf', async (req, res, next) => {
         drawPageChrome(doc, i);
       }
       // Cover page already has its own bg + gold bar, no footer needed
+    }
+
+    doc.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ========================================================================
+// SESSION SNAPSHOTS & VERSION CONTROL
+// ========================================================================
+
+// POST /api/sessions/:id/snapshot — capture current state of all area_technologies
+router.post('/:id/snapshot', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const session = await db.get(
+      'SELECT s.*, p.id AS project_id FROM sessions s JOIN projects p ON p.id = s.project_id WHERE s.id = ?',
+      req.params.id
+    );
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    // Delete existing snapshot for this session (replace)
+    await db.run('DELETE FROM session_snapshots WHERE session_id = ?', session.id);
+
+    // Capture all area_technologies for this project
+    const rows = await db.all(
+      `SELECT at.area_id, a.name AS area_name, at.technology_id,
+              t.name AS technology_name, t.vendor,
+              c.name AS coe_name, at.is_selected, at.notes
+       FROM area_technologies at
+       JOIN areas a ON a.id = at.area_id
+       JOIN technologies t ON t.id = at.technology_id
+       LEFT JOIN coes c ON c.id = t.coe_id
+       WHERE a.project_id = ?
+       ORDER BY a.sort_order, a.name, t.name`,
+      session.project_id
+    );
+
+    for (const row of rows) {
+      await db.run(
+        'INSERT INTO session_snapshots (session_id, area_id, area_name, technology_id, technology_name, vendor, coe_name, is_selected, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [session.id, row.area_id, row.area_name, row.technology_id, row.technology_name, row.vendor, row.coe_name, row.is_selected, row.notes]
+      );
+    }
+
+    res.status(201).json({ session_id: session.id, snapshot_count: rows.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/sessions/:id/snapshot — retrieve snapshot
+router.get('/:id/snapshot', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const session = await db.get('SELECT * FROM sessions WHERE id = ?', req.params.id);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    const snapshot = await db.all(
+      'SELECT * FROM session_snapshots WHERE session_id = ? ORDER BY area_name, technology_name',
+      req.params.id
+    );
+
+    // Group by area
+    const areas = {};
+    for (const row of snapshot) {
+      if (!areas[row.area_name]) {
+        areas[row.area_name] = { area_id: row.area_id, area_name: row.area_name, technologies: [] };
+      }
+      areas[row.area_name].technologies.push({
+        technology_id: row.technology_id,
+        technology_name: row.technology_name,
+        vendor: row.vendor,
+        coe_name: row.coe_name,
+        is_selected: row.is_selected,
+        notes: row.notes,
+      });
+    }
+
+    res.json({ session, areas: Object.values(areas) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/sessions/:a/diff/:b — diff two session snapshots
+router.get('/:a/diff/:b', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const [sessionA, sessionB] = await Promise.all([
+      db.get('SELECT * FROM sessions WHERE id = ?', req.params.a),
+      db.get('SELECT * FROM sessions WHERE id = ?', req.params.b),
+    ]);
+    if (!sessionA || !sessionB) return res.status(404).json({ error: 'Session not found' });
+
+    const [snapA, snapB] = await Promise.all([
+      db.all('SELECT * FROM session_snapshots WHERE session_id = ? ORDER BY area_name, technology_name', req.params.a),
+      db.all('SELECT * FROM session_snapshots WHERE session_id = ? ORDER BY area_name, technology_name', req.params.b),
+    ]);
+
+    // Build lookup maps: area_name::tech_name -> snapshot row
+    function buildMap(snap) {
+      const m = {};
+      for (const row of snap) m[`${row.area_name}::${row.technology_name}`] = row;
+      return m;
+    }
+
+    const mapA = buildMap(snapA);
+    const mapB = buildMap(snapB);
+    const allKeys = new Set([...Object.keys(mapA), ...Object.keys(mapB)]);
+
+    const changes = [];
+    for (const key of allKeys) {
+      const a = mapA[key];
+      const b = mapB[key];
+      const [areaName, techName] = key.split('::');
+
+      if (a && !b) {
+        changes.push({ type: 'removed', area_name: areaName, technology_name: techName, vendor: a.vendor, coe_name: a.coe_name, was_selected: a.is_selected });
+      } else if (!a && b) {
+        changes.push({ type: 'added', area_name: areaName, technology_name: techName, vendor: b.vendor, coe_name: b.coe_name, is_selected: b.is_selected });
+      } else if (a && b && a.is_selected !== b.is_selected) {
+        changes.push({ type: 'changed', area_name: areaName, technology_name: techName, vendor: b.vendor, coe_name: b.coe_name, was_selected: a.is_selected, is_selected: b.is_selected });
+      }
+    }
+
+    changes.sort((x, y) => x.area_name.localeCompare(y.area_name) || x.technology_name.localeCompare(y.technology_name));
+
+    res.json({
+      session_a: { id: sessionA.id, name: sessionA.name, created_at: sessionA.created_at },
+      session_b: { id: sessionB.id, name: sessionB.name, created_at: sessionB.created_at },
+      summary: {
+        added: changes.filter((c) => c.type === 'added').length,
+        removed: changes.filter((c) => c.type === 'removed').length,
+        changed: changes.filter((c) => c.type === 'changed').length,
+      },
+      changes,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/sessions/:a/diff/:b/pdf — export diff as branded PDF
+router.get('/:a/diff/:b/pdf', async (req, res, next) => {
+  try {
+    const db = getDb();
+    const [sessionA, sessionB] = await Promise.all([
+      db.get('SELECT s.*, p.name AS project_name FROM sessions s JOIN projects p ON p.id = s.project_id WHERE s.id = ?', req.params.a),
+      db.get('SELECT s.*, p.name AS project_name FROM sessions s JOIN projects p ON p.id = s.project_id WHERE s.id = ?', req.params.b),
+    ]);
+    if (!sessionA || !sessionB) return res.status(404).json({ error: 'Session not found' });
+
+    const [snapA, snapB] = await Promise.all([
+      db.all('SELECT * FROM session_snapshots WHERE session_id = ?', req.params.a),
+      db.all('SELECT * FROM session_snapshots WHERE session_id = ?', req.params.b),
+    ]);
+
+    function buildMap(snap) {
+      const m = {};
+      for (const row of snap) m[`${row.area_name}::${row.technology_name}`] = row;
+      return m;
+    }
+    const mapA = buildMap(snapA);
+    const mapB = buildMap(snapB);
+    const allKeys = new Set([...Object.keys(mapA), ...Object.keys(mapB)]);
+
+    const changes = [];
+    for (const key of allKeys) {
+      const a = mapA[key];
+      const b = mapB[key];
+      const [areaName, techName] = key.split('::');
+      if (a && !b) changes.push({ type: 'removed', area_name: areaName, technology_name: techName, vendor: a.vendor, coe_name: a.coe_name });
+      else if (!a && b) changes.push({ type: 'added', area_name: areaName, technology_name: techName, vendor: b.vendor, coe_name: b.coe_name });
+      else if (a && b && a.is_selected !== b.is_selected) {
+        changes.push({ type: a.is_selected && !b.is_selected ? 'deselected' : 'selected', area_name: areaName, technology_name: techName, vendor: b.vendor, coe_name: b.coe_name });
+      }
+    }
+    changes.sort((x, y) => x.area_name.localeCompare(y.area_name) || x.technology_name.localeCompare(y.technology_name));
+
+    // Build PDF
+    const doc = new PDFDocument({ size: 'A4', margin: MARGIN, autoFirstPage: false, bufferPages: true });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="layer1-diff-${sessionA.id}-vs-${sessionB.id}.pdf"`);
+    doc.pipe(res);
+
+    // Cover
+    doc.addPage();
+    doc.rect(0, 0, PAGE_W, PAGE_H).fill(rgb(CREAM));
+    doc.rect(0, 0, PAGE_W, 4).fill(rgb(GOLD));
+
+    const centerY = PAGE_H * 0.35;
+    doc.font('Times-Bold').fontSize(42).fillColor(rgb(DARK));
+    doc.text('Layer 1', 0, centerY, { align: 'center', continued: true });
+    doc.fillColor(rgb(GOLD)).text('.');
+    const diffRuleY = centerY + 58;
+    doc.moveTo(PAGE_W / 2 - 30, diffRuleY).lineTo(PAGE_W / 2 + 30, diffRuleY).strokeColor(rgb(GOLD)).lineWidth(1.5).stroke();
+    doc.font('Helvetica').fontSize(10).fillColor(rgb(LIGHT_GREY));
+    doc.text('SESSION COMPARISON REPORT', 0, diffRuleY + 20, { align: 'center', characterSpacing: 3 });
+    doc.font('Times-Bold').fontSize(18).fillColor(rgb(DARK));
+    doc.text(sessionA.project_name || 'Project', 0, diffRuleY + 55, { align: 'center' });
+    doc.font('Helvetica').fontSize(10).fillColor(rgb(MID_GREY));
+    doc.text(`${sessionA.name}  vs  ${sessionB.name}`, 0, diffRuleY + 85, { align: 'center' });
+
+    // Changes page
+    doc.addPage();
+    let diffY = 20;
+    doc.font('Times-Bold').fontSize(20).fillColor(rgb(DARK));
+    doc.text('Changes', MARGIN, diffY);
+    diffY += 30;
+    doc.moveTo(MARGIN, diffY).lineTo(MARGIN + 60, diffY).strokeColor(rgb(GOLD)).lineWidth(2).stroke();
+    diffY += 20;
+
+    const addedCount = changes.filter((c) => c.type === 'added' || c.type === 'selected').length;
+    const removedCount = changes.filter((c) => c.type === 'removed' || c.type === 'deselected').length;
+    doc.font('Helvetica').fontSize(10).fillColor(rgb(MID_GREY));
+    doc.text(`Added/Selected: ${addedCount}  |  Removed/Deselected: ${removedCount}  |  Total: ${changes.length}`, MARGIN, diffY);
+    diffY += 25;
+
+    if (changes.length === 0) {
+      doc.font('Helvetica').fontSize(12).fillColor(rgb(LIGHT_GREY));
+      doc.text('No differences found between these sessions.', MARGIN, diffY);
+    } else {
+      const colW = { area: CONTENT_W * 0.25, tech: CONTENT_W * 0.25, vendor: CONTENT_W * 0.2, coe: CONTENT_W * 0.15, type: CONTENT_W * 0.15 };
+      doc.rect(MARGIN, diffY, CONTENT_W, 28).fill(rgb(GOLD));
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(rgb(WHITE));
+      let dcx = MARGIN + 8;
+      doc.text('AREA', dcx, diffY + 9, { width: colW.area - 8 }); dcx += colW.area;
+      doc.text('TECHNOLOGY', dcx, diffY + 9, { width: colW.tech - 8 }); dcx += colW.tech;
+      doc.text('VENDOR', dcx, diffY + 9, { width: colW.vendor - 8 }); dcx += colW.vendor;
+      doc.text('COE', dcx, diffY + 9, { width: colW.coe - 8 }); dcx += colW.coe;
+      doc.text('CHANGE', dcx, diffY + 9, { width: colW.type - 8 });
+      diffY += 28;
+
+      const typeColors = { added: [56, 142, 60], selected: [56, 142, 60], removed: [198, 40, 40], deselected: [198, 40, 40] };
+
+      changes.forEach((ch, idx) => {
+        if (diffY + 24 > PAGE_H - 60) { doc.addPage(); diffY = 20; }
+        doc.rect(MARGIN, diffY, CONTENT_W, 24).fill(rgb(idx % 2 === 0 ? ROW_ALT : WHITE));
+        dcx = MARGIN + 8;
+        doc.font('Helvetica').fontSize(8).fillColor(rgb(DARK));
+        doc.text(ch.area_name || '', dcx, diffY + 8, { width: colW.area - 12, lineBreak: false }); dcx += colW.area;
+        doc.text(ch.technology_name || '', dcx, diffY + 8, { width: colW.tech - 12, lineBreak: false }); dcx += colW.tech;
+        doc.fillColor(rgb(MID_GREY));
+        doc.text(ch.vendor || '', dcx, diffY + 8, { width: colW.vendor - 12, lineBreak: false }); dcx += colW.vendor;
+        doc.text(ch.coe_name || '', dcx, diffY + 8, { width: colW.coe - 12, lineBreak: false }); dcx += colW.coe;
+        doc.font('Helvetica-Bold').fontSize(7).fillColor(rgb(typeColors[ch.type] || DARK));
+        doc.text(ch.type.toUpperCase(), dcx, diffY + 8, { width: colW.type - 12, lineBreak: false });
+        diffY += 24;
+      });
+    }
+
+    // Apply page chrome
+    const diffPageCount = doc.bufferedPageRange().count;
+    for (let i = 0; i < diffPageCount; i++) {
+      doc.switchToPage(i);
+      if (i > 0) drawPageChrome(doc, i);
     }
 
     doc.end();

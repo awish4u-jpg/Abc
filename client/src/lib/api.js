@@ -78,6 +78,10 @@ export const api = {
   getDecisions: (sessionId) => request(`/sessions/${sessionId}/decisions`),
   getReport: (sessionId) => request(`/sessions/${sessionId}/report`),
   deleteDecision: (id) => request(`/decisions/${id}`, { method: 'DELETE' }),
+  createSnapshot: (sessionId) =>
+    request(`/sessions/${sessionId}/snapshot`, { method: 'POST' }),
+  getSnapshot: (sessionId) => request(`/sessions/${sessionId}/snapshot`),
+  getDiff: (a, b) => request(`/sessions/${a}/diff/${b}`),
 
   // COEs
   getCoes: (params = {}) => {
@@ -99,6 +103,23 @@ export const api = {
   },
   deleteMedia: (id) =>
     request(`/media/${id}`, { method: 'DELETE' }),
+  // Library (Master Technology Catalog)
+  getLibrary: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/library${qs ? `?${qs}` : ''}`);
+  },
+  getLibraryTech: (id) => request(`/library/${id}`),
+  createLibraryTech: (body) =>
+    request('/library', { method: 'POST', body: JSON.stringify(body) }),
+  updateLibraryTech: (id, body) =>
+    request(`/library/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteLibraryTech: (id) =>
+    request(`/library/${id}`, { method: 'DELETE' }),
+  importLibraryTech: (id, body) =>
+    request(`/library/${id}/import`, { method: 'POST', body: JSON.stringify(body) }),
+  bulkImportLibrary: (body) =>
+    request('/library/bulk-import', { method: 'POST', body: JSON.stringify(body) }),
+
   uploadFile: async (file, meta = {}) => {
     const formData = new FormData();
     formData.append('file', file);

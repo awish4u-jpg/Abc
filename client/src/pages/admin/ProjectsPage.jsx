@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 
 const PROJECT_TYPES = ['Residential', 'Hospitality', 'Healthcare', 'Airport', 'Institutional', 'Corporate'];
 
 export default function ProjectsPage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -73,6 +75,10 @@ export default function ProjectsPage() {
     setProjects((prev) => [cloned, ...prev]);
   };
 
+  const handleSaveAsTemplate = async (id) => {
+    await api.cloneProject(id, { is_template: true });
+  };
+
   const handleAddArea = async (e, projectId) => {
     e.preventDefault();
     const area = await api.createProjectArea(projectId, { ...areaForm, sort_order: expandedAreas.length });
@@ -105,9 +111,17 @@ export default function ProjectsPage() {
         <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: "'Playfair Display', serif" }}>
           Projects
         </h2>
-        <button onClick={openCreate} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
-          Create New Project
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin/wizard')}
+            className="px-5 py-2 rounded-lg border border-[#C5A572] text-[#C5A572] text-sm font-medium hover:bg-[#C5A572]/10 transition-colors"
+          >
+            New Project Wizard
+          </button>
+          <button onClick={openCreate} className="px-5 py-2 rounded-lg bg-[#C5A572] text-white text-sm font-medium hover:bg-[#B8975F] transition-colors">
+            Create New Project
+          </button>
+        </div>
       </div>
 
       <div className="p-8">
@@ -148,6 +162,7 @@ export default function ProjectsPage() {
                           <div className="px-5 py-3 flex items-center gap-2 shrink-0">
                             <button onClick={() => openEdit(p)} className="text-xs text-gray-400 hover:text-[#C5A572] transition-colors">Edit</button>
                             <button onClick={() => handleClone(p.id)} className="text-xs text-gray-400 hover:text-[#C5A572] transition-colors">Clone</button>
+                            <button onClick={() => handleSaveAsTemplate(p.id)} className="text-xs text-gray-400 hover:text-[#C5A572] transition-colors">Save as Template</button>
                             <button onClick={() => handleDelete(p.id)} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Delete</button>
                             <a href={`/present/${p.id}`} className="text-xs text-[#C5A572] hover:text-[#B8975F] transition-colors font-medium">Present</a>
                           </div>

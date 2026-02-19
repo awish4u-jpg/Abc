@@ -280,7 +280,8 @@ router.get('/:projectId/sessions', async (req, res, next) => {
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
     const sessions = await getDb().all(
-      'SELECT * FROM sessions WHERE project_id = ? ORDER BY created_at DESC',
+      `SELECT s.*, (SELECT COUNT(*) FROM session_snapshots ss WHERE ss.session_id = s.id) AS snapshot_count
+       FROM sessions s WHERE s.project_id = ? ORDER BY s.created_at DESC`,
       req.params.projectId
     );
     res.json(sessions);
