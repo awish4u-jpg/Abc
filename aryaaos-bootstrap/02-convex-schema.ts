@@ -466,4 +466,189 @@ export default defineSchema({
     enabled: v.boolean(),
     updatedAt: v.number(),
   }).index("by_name", ["name"]),
+
+  // ============================================================
+  // Schema v2 additions — smart inbox, Pulse, Coach pattern
+  // ============================================================
+
+  // ----- Smart inbox (Outlook only — Gmail not in scope) -----
+  mailItems: defineTable({
+    externalId: v.string(),                       // Outlook message ID
+    threadId: v.optional(v.string()),
+    receivedAt: v.number(),
+    fromName: v.string(),
+    fromEmail: v.string(),
+    subject: v.string(),
+    snippet: v.string(),                          // first ~200 chars
+    org: orgEnum,                                 // always "layer1" in v1
+    private: v.boolean(),
+    vipSender: v.boolean(),                       // computed at insert
+    urgencyClaude: v.optional(v.number()),        // 0-1 from classifier
+    urgencyUser: v.optional(v.union(
+      v.literal("urgent"),
+      v.literal("important"),
+      v.literal("normal"),
+    )),
+    rottenDays: v.number(),                       // recomputed daily
+    status: v.union(
+      v.literal("needs_you"),
+      v.literal("dismissed"),
+      v.literal("replied"),
+      v.literal("draft_pending"),
+    ),
+    dismissedAt: v.optional(v.number()),
+    autoResurfaceOn: v.optional(v.number()),      // dismiss + new reply triggers resurface
+    draftId: v.optional(v.string()),              // Outlook draft ID once created
+    linkedClientId: v.optional(v.id("clients")),
+    embedding: v.optional(v.array(v.float64())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status_urgency", ["status", "urgencyUser"])
+    .index("by_external", ["externalId"])
+    .index("by_thread", ["threadId"])
+    .index("by_received", ["receivedAt"]),
+
+  vipSenders: defineTable({
+    email: v.string(),
+    name: v.optional(v.string()),
+    reason: v.optional(v.string()),               // "Layer 1 client", "internal team", "always urgent"
+    org: orgEnum,
+    autoUrgent: v.boolean(),                      // mark all from this sender as urgent
+    addedBy: v.union(v.literal("user"), v.literal("coach"), v.literal("auto_seed")),
+    addedAt: v.number(),
+    confirmedAt: v.optional(v.number()),          // user confirmed Coach's suggestion
+    removedAt: v.optional(v.number()),
+  }).index("by_email", ["email"]),
+
+  // ----- Pulse (mood-aware quote engine) -----
+  quotes: defineTable({
+    text: v.string(),
+    attribution: v.optional(v.string()),
+    tradition: v.optional(v.string()),            // Stoic, Eastern, ADHD-lit, leadership, etc.
+    tone: v.array(v.string()),                    // ["calming", "fierce", "witty", "reflective", ...]
+    themes: v.array(v.string()),                  // ["fear", "slipping", "ADHD", "creativity"]
+    language: v.string(),                          // "en", "sa" (Sanskrit), "hi" (Hindi)
+    translationEn: v.optional(v.string()),        // required for non-English quotes
+    isPersonal: v.boolean(),                      // user-added
+    aiGenerated: v.boolean(),
+    presentationSafe: v.boolean(),                // can show in Stage mode
+    embedding: v.optional(v.array(v.float64())),
+    showCount: v.number(),
+    lastShownAt: v.optional(v.number()),
+    likedCount: v.number(),
+    dislikedCount: v.number(),
+    blacklisted: v.boolean(),                     // user disliked → never show
+    createdAt: v.number(),
+  })
+    .index("by_last_shown", ["lastShownAt"])
+    .index("by_blacklisted", ["blacklisted"])
+    .vectorIndex("by_embedding", { vectorField: "embedding", dimensions: 1024 }),
+
+  moodSnapshots: defineTable({
+    takenAt: v.number(),
+    signals: v.object({
+      inboxStress: v.number(),                    // 0-1
+      slippingCount: v.number(),
+      completionToday: v.number(),
+      calendarLoad: v.number(),                   // 0-1
+      recentSentiment: v.number(),                // -1 to 1
+      recentIdeasCount: v.number(),
+      timeOfDay: v.string(),                      // "morning"|"midday"|"evening"|"late"
+      dayOfWeek: v.string(),
+      mode: modeEnum,
+      streak: v.number(),
+      recentTopics: v.array(v.string()),
+      selfReportedMood: v.optional(v.string()),
+    }),
+    inferredMood: v.string(),                     // Claude's 1-line interpretation
+    inferredMoodConfidence: v.number(),
+  }),
+
+  pulseSelections: defineTable({
+    quoteId: v.id("quotes"),
+    moodSnapshotId: v.id("moodSnapshots"),
+    reasoning: v.string(),                        // why Claude picked this — for retrospective tuning
+    shownAt: v.number(),
+    surface: v.union(
+      v.literal("dashboard"),
+      v.literal("mobile_home"),
+      v.literal("mobile_ribbon"),
+      v.literal("stage"),
+    ),
+    feedback: v.optional(v.union(
+      v.literal("liked"),
+      v.literal("disliked"),
+      v.literal("another"),
+      // null/absent = no interaction = NOT a learning signal (per ADHD-aware design)
+    )),
+    dislikeScope: v.optional(v.array(v.union(
+      v.literal("quote"),
+      v.literal("author"),
+      v.literal("tone"),
+    ))),                                           // user can pick multiple on long-press dislike
+    feedbackAt: v.optional(v.number()),
+  }).index("by_quote", ["quoteId"]),
+
+  pulseTonePreferences: defineTable({
+    // pattern-level learned weights, derived from likes/dislikes
+    dimension: v.union(v.literal("tone"), v.literal("tradition"), v.literal("theme"), v.literal("language")),
+    value: v.string(),                            // e.g. "Stoic", "calming", "fear"
+    weight: v.number(),                           // accumulated, can go negative
+    likeCount: v.number(),
+    dislikeCount: v.number(),
+    updatedAt: v.number(),
+  }).index("by_dimension_value", ["dimension", "value"]),
+
+  // ----- Coach pattern (the conversational layer) -----
+  coachMemory: defineTable({
+    // single row per user (use .unique() in queries)
+    patterns: v.array(v.object({
+      category: v.string(),                       // "email_urgency", "omnibox_classify", etc.
+      pattern: v.string(),                         // human-readable rule
+      confirmedAt: v.number(),
+      confirmationCount: v.number(),
+      contradictionCount: v.number(),
+    })),
+    openQuestions: v.array(v.string()),
+    lastUpdatedAt: v.number(),
+  }),
+
+  trustScores: defineTable({
+    decisionCategory: v.string(),                 // "email_urgency", "omnibox_classify", "vip_addition", etc.
+    score: v.number(),                             // 0-100
+    totalDecisions: v.number(),
+    acceptedCount: v.number(),
+    rejectedCount: v.number(),
+    correctedCount: v.number(),                   // accepted but edited
+    lastUpdatedAt: v.number(),
+  }).index("by_category", ["decisionCategory"]),
+
+  coachConversations: defineTable({
+    category: v.string(),                         // links to trustScores.decisionCategory
+    triggeredBy: v.optional(v.string()),          // e.g. "mailItem:abc123"
+    prompt: v.string(),                            // Coach's question
+    response: v.optional(v.string()),             // user's answer
+    outcome: v.union(
+      v.literal("rule_locked"),                   // converted to memory pattern
+      v.literal("one_off"),                        // applied just this time
+      v.literal("dismissed"),
+      v.literal("pending"),
+    ),
+    affectedMemoryPatternIndex: v.optional(v.number()),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_outcome", ["outcome", "createdAt"])
+    .index("by_category", ["category", "createdAt"]),
+
+  dailyDigest: defineTable({
+    date: v.string(),                             // "2026-04-30"
+    autonomousActionCount: v.number(),
+    sampleActionIds: v.array(v.id("activity")),   // 3 surfaced for review
+    coachConversationIds: v.array(v.id("coachConversations")),
+    shownAt: v.optional(v.number()),
+    reviewedAt: v.optional(v.number()),
+    correctionCount: v.number(),                  // how many user pushed back on
+  }).index("by_date", ["date"]),
 });

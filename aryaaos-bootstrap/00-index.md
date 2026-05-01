@@ -5,10 +5,14 @@ Five artifacts. Read in order on Day 0; reference daily after that.
 | # | File | What it is |
 |---|---|---|
 | 1 | `01-roadmap.md` | Revised 4-week build plan, ADHD-tuned, omnibox-centric |
-| 2 | `02-convex-schema.ts` | Convex schema v1 — paste into `convex/schema.ts` of the new repo |
+| 2 | `02-convex-schema.ts` | Convex schema **v2** — paste into `convex/schema.ts` of the new repo |
 | 3 | `03-omnibox-spec.md` | The floating omnibox: UI, voice, Claude routing, classifier, confirmation cards |
 | 4 | `04-claude-for-chrome-prompts.md` | Copy-paste prompt pack for Claude for Chrome — drives ~70% of the manual setup |
 | 5 | `05-execution-plan.md` | Day-by-day plan with explicit "you / CfC / Claude Code / chat" ownership |
+| 6 | `06-pulse-spec.md` | Pulse: mood-aware quote engine, explicit-only learning |
+| 7 | `07-smart-inbox-spec.md` | Outlook smart inbox + VIP list + auto-resurface |
+| 8 | `08-coach-pattern.md` | Coach: graduated autonomy via conversation (the architecture) |
+| 9 | `09-wireframes-v2.md` | All locked screen layouts (Default / Stage / Solo + Pulse + Coach + mobile) |
 
 ## Locked decisions (reference)
 
@@ -25,4 +29,11 @@ Five artifacts. Read in order on Day 0; reference daily after that.
 - **Modes**: Stage / Default / Solo
 - **Daily flow**: 8am brief, 2pm nudge, 9pm review (UI nudges only)
 - **Auth**: Microsoft SSO (Layer 1 tenant)
-- **Cut**: WhatsApp/Telegram, two-way SP sync (read-only first), email reminders, Fireflies, Avenir
+- **Cut**: WhatsApp/Telegram, two-way SP sync (read-only first), email reminders, Fireflies, Avenir, personal Gmail
+
+## v2 additions (this push)
+
+- **Smart inbox** (Outlook only) — Needs You widget with urgent/important/dismiss/draft per email; auto-resurface on re-email; VIP list auto-seeded by Coach.
+- **Pulse** — mood-aware quote engine on every app open; explicit-only learning (no-feedback ≠ dislike); like/dislike/another; Sanskrit + Hindi with English translation; visible in Stage but no actions.
+- **Coach pattern** — conversational layer above all decisions. Trust scores per category, graduated autonomy (ask → card → silent → invisible), persistent memory, 9pm digest.
+- **Mobile** — Pulse box on home, ribbon at top of every other screen (tap to expand).
