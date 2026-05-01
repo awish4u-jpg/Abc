@@ -111,16 +111,18 @@ If Wispr Windows is not available → tell me, we switch to Aqua Voice.
 
 ---
 
-## Day 7 — Confirmation cards + tiers (~3h)
+## Day 7 — Confirmation cards + tiers + Coach gate (~3h)
 
 | # | Task | Owner |
 |---|---|---|
-| 1 | CC builds Review Queue panel. | CC |
+| 1 | CC builds Review Queue panel (floating bottom-right + collapsible). | CC |
 | 2 | CC builds confirmation card component. | CC |
 | 3 | CC implements tier mapping table from spec. | CC |
 | 4 | CC implements 3-second hold gate for hard-confirm. | CC |
 | 5 | CC implements Edit / Reject flows. | CC |
-| 6 | You run 10 real omnibox inputs end-to-end. Note friction. | You |
+| 6 | CC implements Coach trust-score gate: low trust converts action to question. | CC |
+| 7 | CC seeds initial trustScores rows per decision category from `08-coach-pattern.md`. | CC |
+| 8 | You run 10 real omnibox inputs end-to-end. Note friction. | You |
 
 ---
 
@@ -176,16 +178,21 @@ If Wispr Windows is not available → tell me, we switch to Aqua Voice.
 
 ---
 
-## Day 14 — Microsoft Graph (~3h)
+## Day 14 — Microsoft Graph + smart inbox + VIP onboarding (~5h)
 
 | # | Task | Owner |
 |---|---|---|
 | 1 | CC writes Graph client in `convex/integrations/microsoft.ts`. | CC |
 | 2 | CC pulls Outlook calendar → `meetings` table. | CC |
-| 3 | CC implements `draft_email` tool: writes to Outlook Drafts via Graph. | CC |
-| 4 | CC mirrors uploaded files to OneDrive `Layer 1/AryaaOS/Files/`. | CC |
-| 5 | CC reads Layer 1 SharePoint project folders (read-only). | CC |
-| 6 | You verify a draft email appears in Outlook on your phone. | You |
+| 3 | CC subscribes to mail webhook → `mailItems` ingest pipeline. | CC |
+| 4 | CC writes Haiku urgency classifier per `07-smart-inbox-spec.md`. | CC |
+| 5 | CC implements dismiss-with-resurface logic. | CC |
+| 6 | CC writes Coach VIP onboarding action (90d scan → Sonnet ranks → user approves). | CC |
+| 7 | You run VIP onboarding. First big Coach moment. | You |
+| 8 | CC implements `draft_email` tool: writes to Outlook Drafts via Graph. | CC |
+| 9 | CC mirrors uploaded files to OneDrive `Layer 1/AryaaOS/Files/`. | CC |
+| 10 | CC reads Layer 1 SharePoint project folders (read-only). | CC |
+| 11 | You verify a draft email appears in Outlook on your phone. | You |
 
 ---
 
@@ -201,13 +208,17 @@ If Wispr Windows is not available → tell me, we switch to Aqua Voice.
 
 ---
 
-## Day 16 — Templates + dashboard (~3h)
+## Day 16 — Templates + dashboard + Pulse top zone (~4h)
 
 | # | Task | Owner |
 |---|---|---|
 | 1 | CC builds template system + seeds 6 templates (project, vendor, meeting, proposal, deal, **idea**). | CC |
-| 2 | CC builds the home dashboard with 6 widgets per `01-roadmap.md` Day 16. | CC |
-| 3 | You use the dashboard for one full day, log friction. | You |
+| 2 | CC builds Default home per `09-wireframes-v2.md` (Pulse zone + Today + Needs You + Slipping). | CC |
+| 3 | CC builds Stage home variant (sanitized Pulse pool, project-only). | CC |
+| 4 | CC builds Solo home variant (4-up grid + private pillars). | CC |
+| 5 | CC builds mode switcher (top-right) with server-side filter enforcement. | CC |
+| 6 | CC builds mobile home + ribbon layout. | CC |
+| 7 | You use the dashboard for one full day, log friction. | You |
 
 ✅ Phase 3 done.
 
@@ -224,15 +235,18 @@ If Wispr Windows is not available → tell me, we switch to Aqua Voice.
 
 ---
 
-## Day 18-19 — Custom agents (~5h)
+## Day 18-19 — Custom agents + CoachAgent (~6h)
 
 | # | Task | Owner |
 |---|---|---|
-| 1 | Me — draft system prompts for 5 agents (Proposal, Vendor, Meeting, Pipeline, Personal). | Me |
+| 1 | Me — draft system prompts for 6 agents (Proposal, Vendor, Meeting, Email, Pipeline, Personal) + CoachAgent. | Me |
 | 2 | CC creates agent registry + selector in chat panel. | CC |
 | 3 | CC wires PersonalAgent gating (Solo mode only). | CC |
-| 4 | You test each agent on a real task. | You |
-| 5 | Me — refine prompts based on output quality. | Me |
+| 4 | CC wires CoachAgent as background system reading/writing `coachMemory`. | CC |
+| 5 | CC implements the three Coach surfaces: Review Queue card, 9pm digest, soft toast. | CC |
+| 6 | You test each agent on a real task. | You |
+| 7 | You have first proper Coach conversation. | You |
+| 8 | Me — refine prompts based on output quality. | Me |
 
 ---
 
@@ -248,24 +262,32 @@ If Wispr Windows is not available → tell me, we switch to Aqua Voice.
 
 ---
 
-## Day 21 — Daily flow (~2h)
+## Day 21 — Daily flow + Pulse mood snapshots (~3h)
 
 | # | Task | Owner |
 |---|---|---|
-| 1 | CC writes 8am brief generator (Convex cron). | CC |
-| 2 | CC writes 2pm "not moved" nudge (looks at `tasks.lastMovedAt`). | CC |
-| 3 | CC writes 9pm review prompt. | CC |
-| 4 | CC builds Focus mode + Pomodoro. | CC |
-| 5 | You live one day with the flow. Adjust nudge thresholds. | You |
+| 1 | CC writes mood-snapshot cron at 7:55am, 1:55pm, 8:55pm. | CC |
+| 2 | CC writes 8am brief generator. | CC |
+| 3 | CC writes 2pm "not moved" nudge (looks at `tasks.lastMovedAt`). | CC |
+| 4 | CC writes 9pm Coach digest (sample 3 of N autonomous decisions). | CC |
+| 5 | CC builds Focus mode + Pomodoro. | CC |
+| 6 | Me — nudge prompt copy ("classy, not naggy"). | Me |
+| 7 | You live one day with the flow. Adjust nudge thresholds. | You |
 
 ---
 
-## Day 22 — Skills loader (~2h)
+## Day 22 — Skills loader + Pulse seed library (~3h)
 
 | # | Task | Owner |
 |---|---|---|
 | 1 | CC writes Convex cron pulling from a skills repo (you populate later). | CC |
 | 2 | CC adds skill auto-loading to agents based on context. | CC |
+| 3 | Me — deliver 300-quote seed library as JSON (English + Sanskrit + Hindi, tagged). | Me |
+| 4 | CC writes Pulse selection logic (mood snapshot → query → Haiku pick). | CC |
+| 5 | CC implements pre-computation of next 5 Pulse picks at session-end. | CC |
+| 6 | CC implements ♡ / ✕ / ↻ feedback handlers + cooldown rules + pattern weights. | CC |
+| 7 | CC implements long-press dislike scope picker (quote / author / tone). | CC |
+| 8 | You see Pulse on every open. Tune by feedback. | You |
 
 ✅ Phase 4 done.
 
@@ -294,14 +316,16 @@ If Wispr Windows is not available → tell me, we switch to Aqua Voice.
 
 ---
 
-## Day 28 — Polish + admin docs (~3h)
+## Day 28 — Polish + admin docs + Coach surfaces (~4h)
 
 | # | Task | Owner |
 |---|---|---|
 | 1 | CC writes admin README (rotate keys, restore backup, mode defaults). | CC |
-| 2 | CC sweeps loading states, empty states, error states. | CC |
-| 3 | You start using AryaaOS as your default workspace. | You |
-| 4 | You log friction in a `Friction Log` page for one week. | You |
+| 2 | CC builds `Settings → Coach Memory` editable view. | CC |
+| 3 | CC builds `Settings → Trust Levels` sliders per decision category. | CC |
+| 4 | CC sweeps loading states, empty states, error states. | CC |
+| 5 | You start using AryaaOS as your default workspace. | You |
+| 6 | You log friction in a `Friction Log` page for one week. | You |
 
 ✅ Phase 5 done. AryaaOS is live.
 

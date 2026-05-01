@@ -77,13 +77,14 @@ This is the big day. Spec in `03-omnibox-spec.md`.
 - Output: a **proposed action card** stored in `omnibox_actions` table, status `pending`.
 - UI surfaces cards in a "Review queue" panel (collapsed by default — non-intrusive).
 
-### Day 7: Confirmation card UI + action tiers
+### Day 7: Confirmation card UI + action tiers + Coach gate
 
 - Card shows: input, Claude's interpretation, proposed actions (diff style), confidence.
 - Three tiers wired:
   - **Silent** (auto-applied): tagging, filing, summarising, embedding.
   - **Card** (one-tap accept): create/update Odoo record, draft email, generate image.
   - **Hard confirm** (explicit Yes button + 3-sec delay): send email, delete, calls that cost money.
+- **Coach trust gate**: every action routes through `trustScores` for its decision category. Low trust = converts to a Coach question instead of acting. See `08-coach-pattern.md`.
 - **Bulk review** mode: process queue in batch.
 
 ### Day 8: Modes (Stage / Default / Solo)
@@ -120,9 +121,12 @@ This is the big day. Spec in `03-omnibox-spec.md`.
 - Two-way write: omnibox actions can create/update Odoo records via confirmation card.
 - Webhook receiver: Odoo push → AryaaOS update.
 
-### Day 14: Microsoft Graph integration (Layer 1 tenant)
+### Day 14: Microsoft Graph + smart inbox (Outlook)
 
 - Outlook calendar pull → Meetings DB.
+- **Outlook mail webhook** → `mailItems` ingest + Haiku urgency classifier.
+- **VIP onboarding via Coach**: scans 90d, proposes top 30 senders, you approve in one card. First big Coach moment.
+- **Needs You widget** rendering on dashboard (per `07-smart-inbox-spec.md`).
 - Outlook drafts: `draft_email` tool writes to Drafts folder, you send from Outlook.
 - OneDrive: file uploads in AryaaOS mirror to `Layer 1/AryaaOS/Files/`.
 - SharePoint: read-only project folder mirror (no two-way sync in v1).
@@ -133,17 +137,17 @@ This is the big day. Spec in `03-omnibox-spec.md`.
 - Calendar reconciliation: dedupe events that appear in both Outlook and Google.
 - Granola sync: meeting notes auto-flow into Meetings DB. Action items extracted into Tasks.
 
-### Day 16: Templates + dashboard
+### Day 16: Templates + dashboard (Pulse zone reserved)
 
 - Templates: project tracker, vendor record, meeting note, proposal kickoff, pipeline deal, **idea card** (with status: active/parked/untouched + "build on it" button).
-- Custom dashboard:
-  - Active pipeline deals (Layer 1)
-  - Active projects with status
+- Custom dashboard per `09-wireframes-v2.md`:
+  - **Pulse top zone** (reserved, library wired Day 22)
   - Today's calendar (reconciled)
-  - Inbox count + 1-tap "review queue"
-  - Daily flow widget (8am brief / 2pm nudge / 9pm review)
-  - Mode switcher
+  - **Needs You** smart inbox widget
+  - Slipping section
+  - Mode switcher (top-right)
   - Recent pages
+- Stage / Default / Solo home variants per wireframes file.
 
 ✅ **Phase 3 done when**: you open AryaaOS in the morning and the dashboard shows you the right things without you searching for them.
 
@@ -158,17 +162,19 @@ This is the big day. Spec in `03-omnibox-spec.md`.
 - Per-page chat history.
 - Slash commands inside: `/summarise`, `/find-action-items`, `/draft-email`, `/generate-boq-row`.
 
-### Day 18-19: Custom agents
+### Day 18-19: Custom agents + CoachAgent
 
-Five system-prompt-defined agents, all callable from the page-level chat panel:
+Six system-prompt-defined agents:
 
 1. **ProposalAgent** — loads Layer 1 proposal-builder skill, reads Vendor DB, Pipeline DB, prior proposals.
 2. **VendorAgent** — knows your vendor preferences and pricing patterns; can search via Firecrawl for live datasheets.
 3. **MeetingAgent** — processes Granola transcripts; extracts action items; links to projects; drafts follow-ups.
-4. **PipelineAgent** — analyses Odoo pipeline; suggests next actions; drafts updates.
-5. **PersonalAgent** — knows family context, health, sports interests, weekly schedule. **Only available in Solo mode.**
+4. **EmailAgent** — handles draft generation, urgency classification, VIP suggestions.
+5. **PipelineAgent** — analyses Odoo pipeline; suggests next actions; drafts updates.
+6. **PersonalAgent** — knows family context, health, sports interests. **Only available in Solo mode.**
+7. **CoachAgent** — owns the relationship layer. Reads/writes `coachMemory`, manages `trustScores`, surfaces conversations. Always-on background, never selectable per-page.
 
-Each appears as a selector in the chat panel.
+Each appears as a selector in the chat panel (except CoachAgent, which is global).
 
 ### Day 20: Nano Banana / Gemini image gen
 
@@ -181,18 +187,20 @@ Each appears as a selector in the chat panel.
   - **Presentation slide images** (sized for 16:9, transparent BG option)
 - Generated images stored in Convex file storage + mirrored to OneDrive.
 
-### Day 21: ADHD daily flow
+### Day 21: Daily flow + Pulse mood snapshots
 
-- **8am brief** (UI card on dashboard): today's calendar + top 3 inbox items + 1 follow-up that's slipping.
-- **2pm nudge** (UI banner): "Important tasks you haven't moved today: [list]." Dismissible.
-- **9pm review** (UI card): "Inbox at X items. Anything to capture?"
+- **Mood snapshot cron** at 7:55am, 1:55pm, 8:55pm — pre-computes Pulse picks ahead of nudge times.
+- **8am brief**: today's calendar + Needs You top 3 + 1 slipping follow-up. Pulse already showing top zone.
+- **2pm nudge**: "Important tasks you haven't moved today: [list]." Dismissible.
+- **9pm review = Coach digest**: "Coach handled X things today. Here are 3 — anything off?"
 - **Focus mode**: single-task view + Pomodoro. Opt-in only.
 - **No streaks, no red badges, no email.** UI nudges only.
 
-### Day 22: Skills loader
+### Day 22: Skills loader + Pulse seed library
 
-- Convex cron pulls skills from a private skills repo nightly (you can populate later).
+- Convex cron pulls skills from a private skills repo nightly.
 - Agents auto-load relevant skills based on context.
+- **Pulse seed library**: 300 hand-curated quotes loaded into `quotes` table (English + Sanskrit + Hindi with translations, tagged by tone/tradition/theme).
 
 ✅ **Phase 4 done when**: you draft a real proposal section using ProposalAgent, generate the cover with Nano Banana, and attach a Granola meeting transcript — all from inside AryaaOS.
 
@@ -229,9 +237,11 @@ Each appears as a selector in the chat panel.
 - Per-day Anthropic spend logging in Convex; hard cap at $10/day, $200/month.
 - Per-day Gemini spend logging; cap at $5/day.
 
-### Day 28: Polish + admin docs
+### Day 28: Polish + admin docs + Coach surfaces
 
 - README with admin tasks (rotate keys, restore backup, mode defaults).
+- **`Settings → Coach Memory`** editable view (per `08-coach-pattern.md`).
+- **`Settings → Trust Levels`** sliders per decision category.
 - Final UX sweep: loading states, empty states, error states.
 - One-week shadow period: use AryaaOS daily, log friction in a `Friction Log` page.
 
