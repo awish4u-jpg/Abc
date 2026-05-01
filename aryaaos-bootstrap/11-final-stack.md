@@ -19,7 +19,7 @@ The complete list of everything AryaaOS depends on. This is the authoritative re
 | 1 | **GitHub** | ✅ owned | $0 (private repos free) | Code repo `awish4u-jpg/aryaaos` |
 | 2 | **Convex** | 🟢 Day 1 | $0 → $25-50 from Phase 2 | DB, auth, vector, file storage, cron, server actions |
 | 3 | **Vercel** | 🟢 Day 1 | $0 (free tier) | Next.js hosting + preview deploys |
-| 4 | **Anthropic API** | 🟢 Day 1 | $50-150 (cap: $200) | Claude — Coach, classifier, agents, Pulse |
+| 4 | **Anthropic API** | 🟢 Day 1 | $20-50 (cap: $100) | Claude — prompt cached + Haiku-routed + batch async (see `12-cost-optimization.md`) |
 | 5 | **Microsoft 365** | ✅ owned (Layer 1) | already paid | SSO, Outlook mail, Calendar, OneDrive, SharePoint |
 | 6 | **Odoo** | ✅ owned | already paid | CRM (deals, contacts, vendors, products) |
 | 7 | **GoDaddy** | ✅ owned | already paid | DNS for `casaaria.in` (CNAME `aryaaos`) |
@@ -28,9 +28,9 @@ The complete list of everything AryaaOS depends on. This is the authoritative re
 
 | # | Service | Status | Monthly cost | Purpose |
 |---|---|---|---|---|
-| 8 | **Voyage AI** | 🟢 Day 1 | $5-15 | Embeddings — semantic memory, Pulse mood-match, similar-page |
-| 9 | **OpenAI** | 🟢 Day 1 | $5-10 (cap: $20) | Whisper API — mobile voice + Wispr fallback only (not GPT) |
-| 10 | **Google Gemini API** | 🟢 Day 1 | $5-20 (cap: $50) | Nano Banana image generation (5 use cases) |
+| 8 | ~~Voyage AI~~ → **OpenAI text-embedding-3-small** | 🟢 Day 1 | $1-3 | Embeddings — 3x cheaper than Voyage, same effective quality, no extra vendor |
+| 9 | **OpenAI** | 🟢 Day 1 | $2-4 (cap: $30) | Whisper API + embeddings (combined) |
+| 10 | **Google Gemini API** | 🟢 Day 1 | $1-3 (cap: $10) | Nano Banana — free tier covers most personal use; cache + right-size |
 | 11 | **Sentry** | 🟢 Day 1 | $0 (free tier) | Error tracking from Day 2 |
 | 12 | **Wispr Flow** | 🟢 Day 1 | $12-15 | Windows system-wide dictation (verify Windows availability first) |
 | 13 | **Granola** | 🟢 Day 1 | $14-18 | Meeting AI (online + offline, no bot in meetings) |
@@ -98,31 +98,33 @@ Every item below was considered and rejected. Don't second-guess. Re-evaluate on
 
 ---
 
-## Cost summary
+## Cost summary (post-optimization)
 
 | Tier | Lower | Realistic | Upper |
 |---|---|---|---|
-| Tier 1 (mandatory core) | $50 | $90 | $200 |
-| Tier 2 (designed features) | $41 | $80 | $128 |
+| Tier 1 (mandatory core) | $20 | $50 | $100 |
+| Tier 2 (designed features) | $30 | $40 | $70 |
 | Tier 3 (recommended) | $0 | $3 | $5 |
 | Tier 6 (optional, when added) | $0 | $0 | $10 |
-| **Monthly total** | **~$91** | **~$173** | **~$343** |
+| **Monthly total** | **~$50** | **~$70-90** | **~$185** |
 
-Realistic ongoing: **~$170-200/mo**. After year one: ~$2k. For comparison: Notion Team ($10) + automation overhead + the "I can't customise this" tax of every off-the-shelf workspace.
+Realistic steady-state: **~$70-90/mo**. After year one: ~$1k. For comparison: Notion Team ($10/seat) + automation overhead + the "I can't customise this" tax of every off-the-shelf workspace.
 
-You're building a chief-of-staff. $200/mo is the salary line item — except this one gets smarter every week and never quits.
+You're building a chief-of-staff. ~$80/mo is the salary line — except it gets smarter every week, never quits, and the bill goes *down* over time as Coach trust scores rise (silent decisions don't call Claude).
+
+See `12-cost-optimization.md` for the full implementation plan. Same features, same experience, ~50% cost reduction via prompt caching, Haiku routing, batch API, heuristics-before-LLM, and content-hash dedup.
 
 ---
 
-## Hard caps to set on Day 1 (already in CfC prompts)
+## Hard caps to set on Day 1 (revised post-optimization)
 
 | Provider | Cap | Where set |
 |---|---|---|
-| Anthropic | $200/mo, $10/day notification | Anthropic Console → Limits |
-| OpenAI | $20/mo hard limit | OpenAI Platform → Limits |
-| Gemini | $50/mo budget alert | Google Cloud Console → Billing |
-| Voyage | $30/mo if available | Voyage Dashboard |
+| Anthropic | **$100/mo**, $5/day notification | Anthropic Console → Limits |
+| OpenAI | **$30/mo hard limit** (Whisper + embeddings) | OpenAI Platform → Limits |
+| Gemini | **$10/mo budget alert** | Google Cloud Console → Billing |
 | Convex | Alert at 80% of paid-tier limit | Convex Dashboard → Billing |
+| ~~Voyage~~ | — | Skipped (replaced by OpenAI embeddings) |
 
 In code: per-day soft caps (Day 27 of execution plan). When hit, omnibox auto-downgrades to Haiku-only and image gen pauses with a banner.
 

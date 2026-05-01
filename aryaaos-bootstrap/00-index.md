@@ -13,6 +13,9 @@ Five artifacts. Read in order on Day 0; reference daily after that.
 | 7 | `07-smart-inbox-spec.md` | Outlook smart inbox + VIP list + auto-resurface |
 | 8 | `08-coach-pattern.md` | Coach: graduated autonomy via conversation (the architecture) |
 | 9 | `09-wireframes-v2.md` | All locked screen layouts (Default / Stage / Solo + Pulse + Coach + mobile) |
+| 10 | `10-day1-quickstart.md` | Minute-by-minute first 3 hours of Day 1 |
+| 11 | `11-final-stack.md` | Master reference of every service AryaaOS depends on |
+| 12 | `12-cost-optimization.md` | Implementation guide for ~50% cost reduction (prompt cache + Haiku routing + batch API + heuristics + content-hash dedup) |
 
 ## Locked decisions (reference)
 

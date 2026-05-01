@@ -26,26 +26,25 @@ Paste prompt **§A2**.
 - Output: Convex project, deploy key, project URL into staging note.
 
 ### Block 1C — Anthropic Console (10 min)
-Paste prompt **§A3**.
+Paste prompt **§A3** but **change the monthly cap to $100/mo** and **daily notification to $5/day** (cost optimizations land us at $20-50/mo realistic spend; cap at 2x that).
 - You'll need: phone for SMS verification, credit card for payment method.
-- Output: API key, $200/mo cap set, $10/day notification set.
+- Output: API key, $100/mo cap set, $5/day notification set.
 
 ### Block 1D — Vercel (5 min)
 Paste prompt **§A4**.
 - You'll need: GitHub OAuth approval.
 - Output: Vercel project, CNAME target value into staging note.
 
-### Block 1E — Voyage AI (5 min)
-Paste prompt **§A5**.
-- You'll need: credit card.
+### Block 1E — ~~Voyage AI~~ SKIPPED (cost optimization)
+**Skip this block entirely.** We're using OpenAI text-embedding-3-small instead of Voyage — 3x cheaper, same effective quality, no extra vendor. See `12-cost-optimization.md`.
 
 ### Block 1F — Google AI Studio (Gemini) (8 min)
-Paste prompt **§A6**.
+Paste prompt **§A6** but **change the budget alert to $10/mo** (not $50). Cost optimization tactics (free tier first + image cache + right-size resolution) keep usage low.
 - You'll need: Google account login, billing budget setup.
 
 ### Block 1G — OpenAI (5 min)
-Paste prompt **§A7**.
-- You'll need: credit card, $20/mo limit.
+Paste prompt **§A7** but **change the hard limit to $30/mo** (not $20). This account now covers BOTH Whisper transcription AND text-embedding-3-small for AryaaOS.
+- You'll need: credit card, $30/mo hard limit.
 
 ### Block 1H — Wispr Flow (5 min)
 Paste prompt **§A8**.

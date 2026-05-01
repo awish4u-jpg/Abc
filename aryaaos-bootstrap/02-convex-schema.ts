@@ -92,7 +92,7 @@ export default defineSchema({
     })
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
-      dimensions: 1024, // Voyage voyage-3
+      dimensions: 1536, // OpenAI text-embedding-3-small (cheaper than Voyage, same effective quality)
       filterFields: ["org", "private"],
     }),
 
@@ -154,7 +154,7 @@ export default defineSchema({
     .index("by_org_private", ["org", "private"])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
-      dimensions: 1024,
+      dimensions: 1536, // OpenAI text-embedding-3-small
       filterFields: ["org", "private", "databaseId"],
     }),
 
@@ -284,7 +284,7 @@ export default defineSchema({
     .index("by_status", ["status", "updatedAt"])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
-      dimensions: 1024,
+      dimensions: 1536, // OpenAI text-embedding-3-small
       filterFields: ["org"],
     }),
 
@@ -543,7 +543,7 @@ export default defineSchema({
   })
     .index("by_last_shown", ["lastShownAt"])
     .index("by_blacklisted", ["blacklisted"])
-    .vectorIndex("by_embedding", { vectorField: "embedding", dimensions: 1024 }),
+    .vectorIndex("by_embedding", { vectorField: "embedding", dimensions: 1536 }), // OpenAI text-embedding-3-small
 
   moodSnapshots: defineTable({
     takenAt: v.number(),
