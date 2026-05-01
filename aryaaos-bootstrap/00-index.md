@@ -16,6 +16,7 @@ Five artifacts. Read in order on Day 0; reference daily after that.
 | 10 | `10-day1-quickstart.md` | Minute-by-minute first 3 hours of Day 1 |
 | 11 | `11-final-stack.md` | Master reference of every service AryaaOS depends on |
 | 12 | `12-cost-optimization.md` | Implementation guide for ~50% cost reduction (prompt cache + Haiku routing + batch API + heuristics + content-hash dedup) |
+| 13 | **`13-go.md`** | **The single canonical action list — open this, follow top to bottom** |
 
 ## Locked decisions (reference)
 
