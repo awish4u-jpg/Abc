@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Table Tennis · Score Sheet</title>
+  <meta name="theme-color" content="#FAF6EC" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#FAF6EC',
+            ink: '#1A1A1A',
+            accent: '#E85D2C',
+          },
+          fontFamily: {
+            display: ['Fraunces', 'ui-serif', 'Georgia', 'serif'],
+            body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root { color-scheme: light; }
+    html, body { background: #FAF6EC; color: #1A1A1A; }
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .tnum { font-variant-numeric: tabular-nums; }
+    .label { letter-spacing: 0.22em; text-transform: uppercase; font-weight: 500; }
+    .label-tight { letter-spacing: 0.20em; text-transform: uppercase; font-weight: 500; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid #E85D2C;
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .pill { transition: background-color 120ms ease, color 120ms ease; }
+  </style>
+</head>
+<body>
+  <div id="app" class="mx-auto max-w-md min-h-screen px-5 pt-10 pb-12"></div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const $ = id => document.getElementById(id);
+    const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+    const todayISO = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    };
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const formatShortDate = iso => {
+      const d = new Date(iso + 'T00:00:00');
+      return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+    };
+
+    const QUEUE_KEY = 'tt_offline_queue_v1';
+    const loadQueue = () => {
+      try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
+    };
+    const persistQueue = () => localStorage.setItem(QUEUE_KEY, JSON.stringify(state.ui.queue));
+
+    const state = {
+      players: { p1: 'Awish', p2: 'Dhruv' },
+      matches: [],
+      period: 'all',
+      ui: {
+        editingNames: false,
+        addingMatch: false,
+        offline: !navigator.onLine,
+        queue: loadQueue(),
+        formDraft: { date: todayISO(), s1: '', s2: '' },
+        namesDraft: { p1: 'Awish', p2: 'Dhruv' },
+      },
+    };
+
+    function periodStart(period) {
+      const d = new Date(); d.setHours(0,0,0,0);
+      if (period === 'today') return d;
+      if (period === 'week') {
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        const monday = new Date(d); monday.setDate(d.getDate() + diff);
+        return monday;
+      }
+      if (period === 'month') return new Date(d.getFullYear(), d.getMonth(), 1);
+      return null;
+    }
+    const periodLabel = p => ({today:'TODAY', week:'THIS WEEK', month:'THIS MONTH', all:'ALL TIME'}[p]);
+    const periodEmpty = p => ({today:'today', week:'this week', month:'this month'}[p] || '');
+
+    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+    function sortNewestFirst(matches) {
+      return [...matches].sort((a, b) => {
+        if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+        const ac = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bc = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (ac !== bc) return bc - ac;
+        return (b.id ?? 0) - (a.id ?? 0);
+      });
+    }
+
+    function filteredMatches() {
+      const sorted = sortNewestFirst(state.matches);
+      const start = periodStart(state.period);
+      if (!start) return sorted;
+      const startISO = localISO(start);
+      return sorted.filter(m => m.date >= startISO);
+    }
+
+    function tally(matches) {
+      let p1 = 0, p2 = 0;
+      for (const m of matches) {
+        if (m.s1 > m.s2) p1++;
+        else if (m.s2 > m.s1) p2++;
+      }
+      return { p1, p2 };
+    }
+
+    function streak(matchesNewestFirst) {
+      if (!matchesNewestFirst.length) return null;
+      const w = m => m.s1 > m.s2 ? 'p1' : (m.s2 > m.s1 ? 'p2' : null);
+      const top = w(matchesNewestFirst[0]);
+      if (!top) return null;
+      let count = 0;
+      for (const m of matchesNewestFirst) {
+        if (w(m) === top) count++; else break;
+      }
+      if (count < 2) return null;
+      return { player: top === 'p1' ? state.players.p1 : state.players.p2, count };
+    }
+
+    function snapshotForms() {
+      if (state.ui.addingMatch) {
+        const d = $('m-date'), a = $('m-s1'), b = $('m-s2');
+        if (d) state.ui.formDraft.date = d.value;
+        if (a) state.ui.formDraft.s1 = a.value;
+        if (b) state.ui.formDraft.s2 = b.value;
+      }
+      if (state.ui.editingNames) {
+        const a = $('e-p1'), b = $('e-p2');
+        if (a) state.ui.namesDraft.p1 = a.value;
+        if (b) state.ui.namesDraft.p2 = b.value;
+      }
+    }
+
+    function captureFocus() {
+      const el = document.activeElement;
+      if (!el || !el.id) return null;
+      let sel = null;
+      try { sel = [el.selectionStart, el.selectionEnd]; } catch {}
+      return { id: el.id, sel };
+    }
+    function restoreFocus(snap) {
+      if (!snap) return;
+      const el = document.getElementById(snap.id);
+      if (!el) return;
+      el.focus();
+      if (snap.sel && snap.sel[0] != null) {
+        try { el.setSelectionRange(snap.sel[0], snap.sel[1]); } catch {}
+      }
+    }
+
+    function render() {
+      snapshotForms();
+      const focusSnap = captureFocus();
+      $('app').innerHTML = renderHTML();
+      restoreFocus(focusSnap);
+      updateSaveButtonState();
+    }
+
+    function renderHTML() {
+      const list = filteredMatches();
+      const totals = tally(list);
+      const sk = streak(list);
+      const p1Name = state.players.p1, p2Name = state.players.p2;
+      const period = state.period;
+      const offline = state.ui.offline || state.ui.queue.length > 0;
+      const queueN = state.ui.queue.length;
+      const periods = [['today','Today'],['week','Week'],['month','Month'],['all','All']];
+
+      return `
+        <header class="flex items-start justify-between gap-4 mb-7">
+          <div>
+            <p class="label text-[0.65rem] opacity-50 mb-1">SCORE SHEET</p>
+            <h1 class="font-display text-3xl font-bold leading-none tracking-tight">Table Tennis</h1>
+          </div>
+          <button onclick="actions.toggleEdit()" class="text-[0.7rem] label-tight px-3 py-2 rounded-full border border-black/10 hover:bg-black/[0.03]">
+            ${state.ui.editingNames ? 'Close' : 'Edit'}
+          </button>
+        </header>
+
+        ${state.ui.editingNames ? `
+          <section class="mb-6 p-4 rounded-2xl border border-black/10 bg-black/[0.02]">
+            <p class="label text-[0.6rem] opacity-60 mb-3">Player names</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+              <input id="e-p1" type="text" maxlength="24" value="${escapeHtml(state.ui.namesDraft.p1)}"
+                class="w-full bg-cream border border-black/[0.15] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent" />
+              <input id="e-p2" type="text" maxlength="24" value="${escapeHtml(state.ui.namesDraft.p2)}"
+                class="w-full bg-cream border border-black/[0.15] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent" />
+            </div>
+            <div class="flex justify-end">
+              <button onclick="actions.saveNames()" class="bg-ink text-cream text-[0.7rem] label-tight px-4 py-2 rounded-full hover:opacity-90">Save</button>
+            </div>
+          </section>
+        ` : ''}
+
+        <nav role="tablist" aria-label="Period" class="flex gap-1 p-1 bg-black/[0.05] rounded-full mb-6">
+          ${periods.map(([k, label]) => `
+            <button role="tab" aria-selected="${period===k}" onclick="actions.setPeriod('${k}')"
+              class="pill flex-1 text-[0.7rem] label-tight py-2 rounded-full ${period===k?'bg-ink text-cream':'text-ink/55 hover:text-ink/80'}">
+              ${label}
+            </button>
+          `).join('')}
+        </nav>
+
+        <section class="relative overflow-hidden bg-ink text-cream rounded-3xl p-6 mb-5">
+          <div class="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-accent opacity-10"></div>
+          <div class="relative flex items-center justify-between mb-6">
+            <p class="label text-[0.62rem] opacity-70">HEAD TO HEAD</p>
+            <p class="label text-[0.62rem] opacity-50">${periodLabel(period)}</p>
+          </div>
+          <div class="relative grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+            <div class="text-center min-w-0">
+              <p class="label text-[0.6rem] opacity-60 mb-2 truncate">${escapeHtml(p1Name)}</p>
+              <p class="font-display font-bold text-7xl leading-none tnum">${totals.p1}</p>
+            </div>
+            <p class="font-display italic text-2xl opacity-40 pb-3 select-none">vs</p>
+            <div class="text-center min-w-0">
+              <p class="label text-[0.6rem] opacity-60 mb-2 truncate">${escapeHtml(p2Name)}</p>
+              <p class="font-display font-bold text-7xl leading-none tnum">${totals.p2}</p>
+            </div>
+          </div>
+          <div class="relative mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+            <p class="text-[0.7rem] opacity-60 tnum">${list.length} ${list.length===1?'match':'matches'}</p>
+            ${sk ? `<p class="text-[0.7rem] text-accent tnum">${escapeHtml(sk.player)} · ${sk.count} streak</p>` : '<span></span>'}
+          </div>
+        </section>
+
+        ${state.ui.addingMatch ? renderForm() : `
+          <button onclick="actions.openForm()" class="w-full bg-accent text-cream rounded-2xl py-4 text-[0.78rem] label-tight hover:brightness-95 active:brightness-90 mb-8">
+            Log a match
+          </button>
+        `}
+
+        <section class="mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <p class="label text-[0.62rem] opacity-60">HISTORY</p>
+            <p class="label text-[0.62rem] opacity-40 tnum">${list.length} ${list.length===1?'entry':'entries'}</p>
+          </div>
+          ${list.length === 0 ? `
+            <div class="text-center py-10 text-sm opacity-40">
+              ${period === 'all' ? 'No matches logged yet.' : `No matches ${periodEmpty(period)}.`}
+            </div>
+          ` : `
+            <ul class="space-y-1.5">
+              ${list.map(renderRow).join('')}
+            </ul>
+          `}
+        </section>
+
+        <footer class="text-center pt-4">
+          <p class="label text-[0.6rem] opacity-40">${offline ? `OFFLINE${queueN ? ` · ${queueN} QUEUED` : ''}` : 'LIVE · SYNCED'}</p>
+        </footer>
+      `;
+    }
+
+    function renderForm() {
+      const d = state.ui.formDraft;
+      return `
+        <section class="mb-8 p-5 rounded-2xl border border-black/10 bg-black/[0.02]">
+          <div class="mb-4">
+            <label for="m-date" class="label text-[0.6rem] opacity-60 block mb-2">Date</label>
+            <input id="m-date" type="date" value="${escapeHtml(d.date)}" oninput="actions.draftChange()"
+              class="w-full bg-cream border border-black/[0.15] rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-accent tnum" />
+          </div>
+          <div class="grid grid-cols-2 gap-4 mb-5">
+            <div>
+              <label for="m-s1" class="label text-[0.6rem] opacity-60 block mb-2 text-center truncate">${escapeHtml(state.players.p1)}</label>
+              <input id="m-s1" type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(d.s1)}" oninput="actions.draftChange()"
+                class="w-full bg-cream border border-black/[0.15] rounded-xl px-3 py-4 text-center font-display font-bold text-4xl tnum focus:outline-none focus:border-accent" />
+            </div>
+            <div>
+              <label for="m-s2" class="label text-[0.6rem] opacity-60 block mb-2 text-center truncate">${escapeHtml(state.players.p2)}</label>
+              <input id="m-s2" type="number" inputmode="numeric" min="0" step="1" value="${escapeHtml(d.s2)}" oninput="actions.draftChange()"
+                class="w-full bg-cream border border-black/[0.15] rounded-xl px-3 py-4 text-center font-display font-bold text-4xl tnum focus:outline-none focus:border-accent" />
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="actions.cancelForm()" class="flex-1 text-[0.7rem] label-tight py-3 rounded-xl border border-black/[0.15] hover:bg-black/[0.04]">Cancel</button>
+            <button id="m-save" onclick="actions.saveMatch()" class="flex-1 text-[0.7rem] label-tight py-3 rounded-xl bg-accent text-cream opacity-40 pointer-events-none">Save match</button>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderRow(m) {
+      const winner = m.s1 > m.s2 ? 'p1' : (m.s2 > m.s1 ? 'p2' : null);
+      const winnerName = winner === 'p1' ? state.players.p1 : (winner === 'p2' ? state.players.p2 : '—');
+      const s1Cls = winner === 'p1' ? 'text-accent font-bold' : 'opacity-40';
+      const s2Cls = winner === 'p2' ? 'text-accent font-bold' : 'opacity-40';
+      const optCls = m._optimistic ? 'opacity-60' : '';
+      return `
+        <li class="group flex items-center gap-3 px-4 py-3 bg-black/[0.03] hover:bg-black/[0.05] rounded-xl ${optCls}">
+          <span class="text-[0.7rem] opacity-50 w-12 tnum shrink-0">${formatShortDate(m.date)}</span>
+          <span class="flex-1 text-center font-display text-lg tnum">
+            <span class="${s1Cls}">${m.s1}</span>
+            <span class="opacity-30 mx-2">—</span>
+            <span class="${s2Cls}">${m.s2}</span>
+          </span>
+          <span class="label text-[0.6rem] opacity-70 w-16 text-right truncate">${escapeHtml(winnerName)}</span>
+          <button onclick="actions.deleteMatch(${m.id})" aria-label="Delete match"
+            class="ml-1 w-6 h-6 flex items-center justify-center rounded-full opacity-25 hover:opacity-100 hover:bg-black/10 text-base leading-none">×</button>
+        </li>
+      `;
+    }
+
+    function updateSaveButtonState() {
+      const btn = $('m-save');
+      if (!btn) return;
+      const s1raw = $('m-s1')?.value ?? '';
+      const s2raw = $('m-s2')?.value ?? '';
+      const s1 = Number(s1raw), s2 = Number(s2raw);
+      const valid = s1raw !== '' && s2raw !== ''
+        && Number.isInteger(s1) && Number.isInteger(s2)
+        && s1 >= 0 && s2 >= 0 && s1 !== s2;
+      btn.classList.toggle('opacity-40', !valid);
+      btn.classList.toggle('pointer-events-none', !valid);
+    }
+
+    const actions = {
+      setPeriod(p) {
+        state.period = p;
+        render();
+      },
+      toggleEdit() {
+        state.ui.editingNames = !state.ui.editingNames;
+        if (state.ui.editingNames) state.ui.namesDraft = { ...state.players };
+        render();
+      },
+      async saveNames() {
+        snapshotForms();
+        const p1 = (state.ui.namesDraft.p1 || '').trim() || state.players.p1;
+        const p2 = (state.ui.namesDraft.p2 || '').trim() || state.players.p2;
+        state.players = { p1, p2 };
+        state.ui.editingNames = false;
+        render();
+        try {
+          const { error } = await supabase.from('players').update({ p1, p2 }).eq('id', 1);
+          if (error) throw error;
+        } catch (e) { console.error('saveNames failed', e); }
+      },
+      openForm() {
+        state.ui.addingMatch = true;
+        state.ui.formDraft = { date: todayISO(), s1: '', s2: '' };
+        render();
+        setTimeout(() => $('m-s1')?.focus(), 0);
+      },
+      cancelForm() {
+        state.ui.addingMatch = false;
+        state.ui.formDraft = { date: todayISO(), s1: '', s2: '' };
+        render();
+      },
+      draftChange() {
+        snapshotForms();
+        updateSaveButtonState();
+      },
+      async saveMatch() {
+        snapshotForms();
+        const draft = state.ui.formDraft;
+        const s1 = Number(draft.s1), s2 = Number(draft.s2);
+        const date = draft.date || todayISO();
+        if (!Number.isInteger(s1) || !Number.isInteger(s2) || s1 < 0 || s2 < 0 || s1 === s2) return;
+
+        const tempId = -Date.now();
+        const optimistic = { id: tempId, date, s1, s2, created_at: new Date().toISOString(), _optimistic: true };
+        state.matches.unshift(optimistic);
+        state.ui.addingMatch = false;
+        state.ui.formDraft = { date: todayISO(), s1: '', s2: '' };
+        render();
+
+        if (!navigator.onLine) {
+          state.ui.queue.push({ tempId, date, s1, s2 });
+          persistQueue();
+          state.ui.offline = true;
+          render();
+          return;
+        }
+
+        try {
+          const { data, error } = await supabase.from('matches').insert({ date, s1, s2 }).select().single();
+          if (error) throw error;
+          const idx = state.matches.findIndex(m => m.id === tempId);
+          if (idx >= 0) state.matches[idx] = data;
+          else if (!state.matches.find(m => m.id === data.id)) state.matches.unshift(data);
+          render();
+        } catch (e) {
+          console.error('saveMatch failed, queueing offline', e);
+          state.ui.queue.push({ tempId, date, s1, s2 });
+          persistQueue();
+          state.ui.offline = true;
+          render();
+        }
+      },
+      async deleteMatch(id) {
+        if (!confirm('Delete this match?')) return;
+        const prev = state.matches;
+        state.matches = state.matches.filter(m => m.id !== id);
+        render();
+        if (id < 0) {
+          state.ui.queue = state.ui.queue.filter(q => q.tempId !== id);
+          persistQueue();
+          return;
+        }
+        try {
+          const { error } = await supabase.from('matches').delete().eq('id', id);
+          if (error) throw error;
+        } catch (e) {
+          console.error('deleteMatch failed, restoring', e);
+          state.matches = prev;
+          render();
+        }
+      },
+    };
+    window.actions = actions;
+
+    window.addEventListener('online', () => {
+      state.ui.offline = false;
+      flushQueue();
+    });
+    window.addEventListener('offline', () => {
+      state.ui.offline = true;
+      render();
+    });
+
+    async function flushQueue() {
+      if (!state.ui.queue.length) { render(); return; }
+      const items = state.ui.queue.slice();
+      state.ui.queue = [];
+      persistQueue();
+      const remaining = [];
+      for (const item of items) {
+        try {
+          const { data, error } = await supabase.from('matches').insert({
+            date: item.date, s1: item.s1, s2: item.s2,
+          }).select().single();
+          if (error) throw error;
+          const idx = state.matches.findIndex(m => m.id === item.tempId);
+          if (idx >= 0) state.matches[idx] = data;
+          else if (!state.matches.find(m => m.id === data.id)) state.matches.unshift(data);
+        } catch (e) {
+          console.error('flush retry failed', e);
+          remaining.push(item);
+        }
+      }
+      state.ui.queue = remaining;
+      persistQueue();
+      state.ui.offline = remaining.length > 0;
+      render();
+    }
+
+    async function bootstrap() {
+      try {
+        const [matchesRes, playersRes] = await Promise.all([
+          supabase.from('matches').select('*').order('date', { ascending: false }).order('created_at', { ascending: false }),
+          supabase.from('players').select('*').eq('id', 1).maybeSingle(),
+        ]);
+        if (matchesRes.error) throw matchesRes.error;
+        if (playersRes.error) throw playersRes.error;
+        if (matchesRes.data) state.matches = matchesRes.data;
+        if (playersRes.data) {
+          state.players = { p1: playersRes.data.p1, p2: playersRes.data.p2 };
+          state.ui.namesDraft = { ...state.players };
+        }
+      } catch (e) {
+        console.error('bootstrap failed (check Supabase URL/key and SQL setup)', e);
+      }
+      render();
+      if (state.ui.queue.length && navigator.onLine) flushQueue();
+    }
+
+    function subscribe() {
+      supabase.channel('matches-rt')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, p => {
+          const row = p.new;
+          if (state.matches.find(m => m.id === row.id)) return;
+          const optIdx = state.matches.findIndex(m =>
+            m._optimistic && m.date === row.date && m.s1 === row.s1 && m.s2 === row.s2
+          );
+          if (optIdx >= 0) state.matches[optIdx] = row;
+          else state.matches.unshift(row);
+          render();
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'matches' }, p => {
+          state.matches = state.matches.filter(m => m.id !== p.old.id);
+          render();
+        })
+        .subscribe();
+
+      supabase.channel('players-rt')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'players' }, p => {
+          if (p.new && p.new.id === 1) {
+            state.players = { p1: p.new.p1, p2: p.new.p2 };
+            if (!state.ui.editingNames) state.ui.namesDraft = { ...state.players };
+            render();
+          }
+        })
+        .subscribe();
+    }
+
+    render();
+    bootstrap();
+    subscribe();
+  </script>
+</body>
+</html>
