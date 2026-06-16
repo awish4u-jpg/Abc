@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AryaaOS — Layer 1 design tokens (placeholder, finalized Day 10) */
+
+@layer base {
+  :root {
+    /* Light mode — editorial quiet */
+    --background: 38 33% 96%;          /* off-white #faf7f2 */
+    --foreground: 30 25% 12%;           /* deep brown-grey #1f1810 */
+    --card: 0 0% 100%;
+    --card-foreground: 30 25% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 25% 12%;
+    --primary: 248 36% 53%;             /* Layer 1 purple #5a4dbf */
+    --primary-foreground: 38 33% 96%;
+    --secondary: 38 25% 88%;
+    --secondary-foreground: 30 25% 20%;
+    --muted: 38 20% 92%;
+    --muted-foreground: 30 15% 45%;
+    --accent: 248 36% 53%;
+    --accent-foreground: 38 33% 96%;
+    --destructive: 0 53% 43%;
+    --destructive-foreground: 38 33% 96%;
+    --border: 38 18% 86%;
+    --input: 38 18% 86%;
+    --ring: 248 36% 53%;
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    /* Dark mode — same palette logic, inverted */
+    --background: 30 18% 8%;            /* deep warm-black */
+    --foreground: 38 25% 92%;
+    --card: 30 15% 11%;
+    --card-foreground: 38 25% 92%;
+    --popover: 30 15% 11%;
+    --popover-foreground: 38 25% 92%;
+    --primary: 248 40% 65%;             /* Layer 1 purple, lifted */
+    --primary-foreground: 30 18% 8%;
+    --secondary: 30 12% 16%;
+    --secondary-foreground: 38 25% 92%;
+    --muted: 30 12% 16%;
+    --muted-foreground: 38 12% 60%;
+    --accent: 248 40% 65%;
+    --accent-foreground: 30 18% 8%;
+    --destructive: 0 45% 50%;
+    --destructive-foreground: 38 25% 92%;
+    --border: 30 12% 18%;
+    --input: 30 12% 18%;
+    --ring: 248 40% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+  }
+
+  /* Generous typography defaults */
+  h1, h2, h3 {
+    @apply font-serif;
+    letter-spacing: -0.015em;
+  }
+
+  /* Pulse zone never feels cramped */
+  .pulse-zone {
+    @apply font-serif text-pulse-desktop md:text-pulse-desktop;
+    line-height: 1.4;
+  }
+  @media (max-width: 768px) {
+    .pulse-zone {
+      @apply text-pulse-mobile;
+    }
+  }
+}
+
+@layer utilities {
+  /* For ADHD: never use hard red without meaning */
+  .text-rotten {
+    @apply text-urgent/80;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Mode-specific top accent bar */
+  .stage-accent {
+    background: linear-gradient(90deg, theme(colors.stage), transparent);
+    height: 3px;
+  }
+}
